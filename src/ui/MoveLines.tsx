@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { formatPrice } from '../game/modes'
 import { colorForSlot } from '../game/palette'
 import { seriesWalks } from '../game/series'
+import { smoothPath } from './curve'
 import type { Mode, RankedEntry, Round } from '../game/types'
 
 /**
@@ -111,14 +112,14 @@ export function MoveLines({ entries, sessions, mode, openPrice, symbols }: MoveL
           )}
 
           {walks.map(({ entry, values }) => {
-            const points = values.map((value, row) => `${x(row)},${y(value)}`).join(' ')
+            const path = smoothPath(values.map((value, row) => ({ x: x(row), y: y(value) })))
             const dimmed = hovered !== null && hovered !== entry.player.id
             return (
               <g key={entry.player.id} className={dimmed ? 'move-line is-dimmed' : 'move-line'}>
-                <polyline points={points} stroke={colorForSlot(entry.player.slot).hex} />
+                <path d={path} stroke={colorForSlot(entry.player.slot).hex} />
                 {/* Wide invisible stroke so the line is easy to hit. */}
-                <polyline
-                  points={points}
+                <path
+                  d={path}
                   className="move-line-hit"
                   onPointerEnter={() => setHovered(entry.player.id)}
                   onPointerLeave={() => setHovered((id) => (id === entry.player.id ? null : id))}

@@ -1178,7 +1178,7 @@ input[type='range']:focus-visible {
 
 /* ---------- Move lines ---------- */
 
-.move-line polyline {
+.move-line path {
   fill: none;
   stroke-width: 2;
   stroke-linejoin: round;
@@ -1186,12 +1186,19 @@ input[type='range']:focus-visible {
   transition: opacity 120ms ease;
 }
 
-.move-line.is-dimmed polyline {
+.move-line.is-dimmed path {
   opacity: 0.2;
 }
 
-/* Invisible, and much easier to hit than a 2px line. */
-.move-line-hit {
+/*
+ * Invisible, and much easier to hit than a 2px line.
+ *
+ * The type selector is load-bearing. As a bare class this was (0,1,0) against
+ * `.move-line path` at (0,1,1), so the rule above won and the "wide" hit area
+ * was in fact 2px wide — the same specificity trap that had the trend colours
+ * and the winner's name earlier.
+ */
+.move-line path.move-line-hit {
   stroke: transparent;
   stroke-width: 12;
 }
