@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { formatOdds } from '../game/binomial'
 import { MODES, formatChange, formatPrice, trendOf } from '../game/modes'
 import { commonOpenPrice, rankRound, settlementOf } from '../game/scoring'
+import { seriesOf, seriesTotals } from '../game/series'
 import { useGame } from '../game/store'
 import type { Mode, RankedEntry } from '../game/types'
 import { DistributionChart } from './DistributionChart'
@@ -27,6 +29,7 @@ const CHART_VIEWS = [
 
 export function ResultsPanel() {
   const round = useGame((s) => s.round)
+  const history = useGame((s) => s.history)
   const players = useGame((s) => s.players)
   const mode = useGame((s) => s.mode)
   const settleRule = useGame((s) => s.settleRule)
@@ -48,6 +51,34 @@ export function ResultsPanel() {
   // everyone tied has one end, not two.
   const losers = ranked.filter((entry) => entry.isLoser && !entry.isWinner)
   const bottom = losers[0]
+
+  /*
+   * The whole series, when there is one.
+   *
+   * Stock Market prices carry forward, so a series that took four days is one
+   * price history and one longer drop — forty flips at ten rows a day — and both
+   * charts read better over the whole thing than over the last day of it. Black
+   * Swan starts each round from the centre, so there is nothing to accumulate.
+   */
+  const sessions = useMemo(
+    () => (mode === 'stock' ? seriesOf(history, round) : [round]),
+    [mode, history, round],
+  )
+  const totals = useMemo(() => seriesTotals(sessions), [sessions])
+  const acrossDays = sessions.length > 1
+
+  // A series always opens at the same price for everyone, even though a single
+  // after-hours session does not.
+  const seriesOpenPrice = commonOpenPrice(sessions[0])
+  const distribution = acrossDays
+    ? {
+        rows: totals.rows,
+        landings: totals.landings,
+        winnerBins: totals.landings
+          .filter((landing) => winners.some((winner) => winner.playerId === landing.playerId))
+          .map((landing) => landing.bin),
+      }
+    : { rows: round.rows, landings: round.landings, winnerBins: winners.map((l) => l.bin) }
 
   const { panel, handle } = useDraggable<HTMLElement, HTMLDivElement>()
 
@@ -117,19 +148,19 @@ export function ResultsPanel() {
         (chartView === 'moves' ? (
           <MoveLines
             entries={ranked}
-            rows={round.rows}
+            sessions={sessions}
             mode={mode}
-            openPrice={commonOpenPrice(round)}
+            openPrice={seriesOpenPrice}
             symbols={symbols}
           />
         ) : (
           <DistributionChart
-            rows={round.rows}
-            landings={round.landings}
+            rows={distribution.rows}
+            landings={distribution.landings}
             players={players}
-            winnerBins={winners.map((l) => l.bin)}
+            winnerBins={distribution.winnerBins}
             mode={mode}
-            openPrice={commonOpenPrice(round)}
+            openPrice={seriesOpenPrice}
           />
         ))}
 

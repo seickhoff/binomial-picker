@@ -1299,6 +1299,13 @@ input[type='range']:focus-visible {
   gap: 8px;
 }
 
+/* Where one session handed over to the next, on the moves chart. */
+.chart-day-break line {
+  stroke: rgba(210, 165, 60, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
 /* ---------- Session placard ---------- */
 
 /*

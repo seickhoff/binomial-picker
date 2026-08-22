@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { formatPrice, walkOf } from '../game/modes'
+import { formatPrice } from '../game/modes'
 import { colorForSlot } from '../game/palette'
-import type { Mode, RankedEntry } from '../game/types'
+import { seriesWalks } from '../game/series'
+import type { Mode, RankedEntry, Round } from '../game/types'
 
 /**
  * Every player's walk down the board, row by row.
@@ -12,7 +13,12 @@ import type { Mode, RankedEntry } from '../game/types'
  */
 export interface MoveLinesProps {
   entries: readonly RankedEntry[]
-  rows: number
+  /**
+   * Every session of the series, oldest first. A Stock Market series that took
+   * four days to settle draws as one line four days long, because that is what
+   * the prices did.
+   */
+  sessions: readonly Round[]
   mode: Mode
   /** Shared opening price, or null when players opened at different prices. */
   openPrice: number | null
@@ -24,22 +30,21 @@ const PAD = { top: 14, right: 62, bottom: 22, left: 44 }
 const PLOT_H = 190
 const WIDTH = 560
 
-export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLinesProps) {
+export function MoveLines({ entries, sessions, mode, openPrice, symbols }: MoveLinesProps) {
   const [hovered, setHovered] = useState<string | null>(null)
 
-  const walks = useMemo(
-    () =>
-      entries
-        .map((entry) => ({
-          entry,
-          values: walkOf(entry.landing.flips, entry.openPrice, mode),
-        }))
-        // A landing recorded without its flips can't be drawn.
-        .filter((walk) => walk.values.length > 1),
-    [entries, mode],
-  )
+  const walks = useMemo(() => {
+    const byId = new Map(entries.map((entry) => [entry.player.id, entry]))
+    return seriesWalks(sessions, mode)
+      .map((walk) => ({ ...walk, entry: byId.get(walk.playerId) }))
+      .filter((walk): walk is typeof walk & { entry: RankedEntry } => walk.entry !== undefined)
+  }, [entries, sessions, mode])
 
   if (walks.length === 0) return null
+
+  // The longest line sets the axis; a player still mid-series has a shorter one.
+  const rows = Math.max(...walks.map((walk) => walk.values.length - 1))
+  const dayBreaks = walks[0].dayBreaks
 
   const all = walks.flatMap((walk) => walk.values)
   const low = Math.min(...all)
@@ -62,7 +67,9 @@ export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLines
         <svg
           viewBox={`0 0 ${WIDTH} ${height}`}
           role="img"
-          aria-label={`Each player's ${mode === 'stock' ? 'price' : 'position'} over ${rows} rows`}
+          aria-label={`Each player's ${mode === 'stock' ? 'price' : 'position'} over ${rows} rows${
+            dayBreaks.length > 0 ? ` across ${dayBreaks.length + 1} sessions` : ''
+          }`}
         >
           {[max, (max + min) / 2, min].map((value) => (
             <g key={value}>
@@ -75,6 +82,18 @@ export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLines
               />
               <text x={PAD.left - 7} y={y(value) + 3.5} className="chart-tick chart-tick-y">
                 {label(value)}
+              </text>
+            </g>
+          ))}
+
+          {/* Where one session ended and the next opened. Without these the line
+              is a single long walk, and the days it took to get there — the whole
+              reason the series ran on — are invisible. */}
+          {dayBreaks.map((row, index) => (
+            <g key={row} className="chart-day-break">
+              <line x1={x(row)} x2={x(row)} y1={PAD.top} y2={PAD.top + PLOT_H} />
+              <text x={x(row) + 4} y={PAD.top + 9} className="chart-tick">
+                Day {index + 2}
               </text>
             </g>
           ))}
@@ -128,10 +147,10 @@ export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLines
           })}
 
           <text x={PAD.left} y={height - 6} className="chart-tick">
-            row 0
+            {dayBreaks.length > 0 ? 'Day 1' : 'row 0'}
           </text>
           <text x={x(rows)} y={height - 6} textAnchor="end" className="chart-tick">
-            row {rows}
+            {dayBreaks.length > 0 ? `${dayBreaks.length + 1} days · ${rows} rows` : `row ${rows}`}
           </text>
         </svg>
 
