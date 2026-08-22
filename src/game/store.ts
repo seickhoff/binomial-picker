@@ -109,6 +109,11 @@ export interface GameState {
    * sessions are dated forward from it, one trading day each.
    */
   seriesStart: number
+  /**
+   * Pull the camera back to take in the whole device. Held, not toggled — it is
+   * a look at the board, not a mode.
+   */
+  overview: boolean
   round: Round
   history: Round[]
   /** Bumped for every release so the physics marbles remount cleanly. */
@@ -126,6 +131,7 @@ export interface GameState {
   setPlinkSound: (on: boolean) => void
   setMuted: (muted: boolean) => void
   setAutoSessions: (on: boolean) => void
+  setOverview: (on: boolean) => void
   addPlayer: () => void
   removePlayer: (id: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -172,6 +178,7 @@ export const useGame = create<GameState>()(
       muted: false,
       autoSessions: true,
       seriesStart: 0,
+      overview: false,
       round: emptyRound(
         0,
         DEFAULT_ROWS,
@@ -194,6 +201,7 @@ export const useGame = create<GameState>()(
       setPlinkSound: (plinkSound) => set({ plinkSound }),
       setMuted: (muted) => set({ muted }),
       setAutoSessions: (autoSessions) => set({ autoSessions }),
+      setOverview: (overview) => set({ overview }),
 
       addPlayer: () =>
         set((state) =>

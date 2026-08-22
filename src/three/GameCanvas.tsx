@@ -25,6 +25,7 @@ export function GameCanvas() {
   const runToken = useGame((s) => s.runToken)
   const round = useGame((s) => s.round)
   const players = useGame((s) => s.players)
+  const overview = useGame((s) => s.overview)
 
   // The round's own depth once a round is under way, since the marbles follow
   // the flips it drew and the board has to have a row for each. The slider
@@ -35,7 +36,9 @@ export function GameCanvas() {
     () => (phase === 'results' ? winnersOf(round, mode).map((l) => l.bin) : []),
     [phase, round, mode],
   )
-  const rendering = useRenderWhileActive(phase, runToken, activeRows)
+  // The overview is a camera move, so the loop has to be awake for it — on the
+  // results screen it has usually idled by the time anyone holds space.
+  const rendering = useRenderWhileActive(phase, runToken, activeRows, overview)
 
   return (
     <Canvas
@@ -92,7 +95,12 @@ export function GameCanvas() {
  * board does not, and idling there is what keeps the GPU — and the fans — quiet.
  * `runToken` and `rows` restart the coast so a new round or board re-renders.
  */
-function useRenderWhileActive(phase: string, runToken: number, rows: number): boolean {
+function useRenderWhileActive(
+  phase: string,
+  runToken: number,
+  rows: number,
+  overview: boolean,
+): boolean {
   const [rendering, setRendering] = useState(true)
 
   useEffect(() => {
@@ -100,7 +108,7 @@ function useRenderWhileActive(phase: string, runToken: number, rows: number): bo
     if (phase === 'running') return
     const timer = window.setTimeout(() => setRendering(false), COAST_MS)
     return () => window.clearTimeout(timer)
-  }, [phase, runToken, rows])
+  }, [phase, runToken, rows, overview])
 
   return rendering
 }

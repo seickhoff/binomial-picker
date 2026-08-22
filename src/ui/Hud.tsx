@@ -90,6 +90,10 @@ export function Hud() {
           </li>
         ))}
       </ol>
+
+      {/* Discoverable only if it is said somewhere, and this is the panel that is
+          up while there is something to look at. */}
+      <p className="hint">Hold Space to see the whole board</p>
     </aside>
   )
 }

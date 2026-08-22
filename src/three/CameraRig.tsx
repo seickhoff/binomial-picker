@@ -33,7 +33,8 @@ export function CameraRig({ geo }: { geo: BoardGeometry }) {
   }, [geo, aspect, size.height])
 
   useFrame((_, dt) => {
-    const target = targetFraming(shot, useGame.getState().phase)
+    const { phase, overview } = useGame.getState()
+    const target = targetFraming(shot, phase, overview)
 
     if (framing.current.settled) {
       const easing = 1 - Math.exp(-FOLLOW_RATE * dt)
@@ -50,7 +51,15 @@ export function CameraRig({ geo }: { geo: BoardGeometry }) {
 }
 
 /** Where the camera wants to be right now, before easing. */
-function targetFraming(shot: Shot, phase: string): { y: number; height: number } {
+function targetFraming(
+  shot: Shot,
+  phase: string,
+  overview: boolean,
+): { y: number; height: number } {
+  // Held space wins over everything, marbles included: it is a request to stop
+  // following the action and look at the device.
+  if (overview) return { y: shot.overviewY, height: shot.overviewHeight }
+
   const focus = marbleFocus()
 
   if (!focus) {

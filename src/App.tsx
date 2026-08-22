@@ -19,14 +19,26 @@ export default function App() {
   const release = useGame((s) => s.release)
   const mode = useGame((s) => s.mode)
   const backToSetup = useGame((s) => s.backToSetup)
+  const setOverview = useGame((s) => s.setOverview)
   const info = MODES[mode]
 
-  // Space re-drops, Esc always gets you back to setup. Neither fires while a
-  // text field has focus.
+  /*
+   * Space and Esc. Neither fires while a text field has focus.
+   *
+   * Space does two things at once, which is deliberate: it gets the round going,
+   * and it pulls the camera back to take in the whole board for as long as it is
+   * held. So holding it through the start of a round both drops the marbles and
+   * watches them from far enough away to see every peg, and letting go returns to
+   * the close follow shot.
+   */
   useEffect(() => {
-    function onKey(event: KeyboardEvent) {
+    function typing(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      return target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (typing(event)) return
 
       if (event.code === 'Escape' && phase !== 'setup') {
         event.preventDefault()
@@ -35,15 +47,34 @@ export default function App() {
       }
       if (event.code === 'Space') {
         event.preventDefault()
-        // Space means "get on with it": from a placard that's dropping the
-        // marbles now, and otherwise starting a session. It does nothing mid-drop.
+        setOverview(true)
+        // Held keys repeat, and a repeat is not a second press: without this,
+        // holding space in setup restarted the round many times a second.
+        if (event.repeat) return
         if (phase === 'opening') release()
         else if (phase !== 'running') start()
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [phase, start, release, backToSetup])
+
+    function onKeyUp(event: KeyboardEvent) {
+      if (event.code === 'Space') setOverview(false)
+    }
+
+    // A key held while the window loses focus never reports going up, and the
+    // camera would stay out at the wide shot with nothing to bring it back.
+    function onBlur() {
+      setOverview(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [phase, start, release, backToSetup, setOverview])
 
   const tickerRunning = mode === 'stock' && phase !== 'setup'
 

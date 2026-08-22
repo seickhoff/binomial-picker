@@ -27,6 +27,15 @@ const CLOSE_ROWS = 5
 /** Space left between the device and the frame edge it is anchored to. */
 const EDGE_MARGIN_PX = 16
 
+/**
+ * Air around the device in the held-space overview, as a multiplier on its size.
+ *
+ * Enough that the board is clearly inside the frame rather than touching it: the
+ * point of the shot is to see the whole thing at once, and a device pressed
+ * against the edges doesn't read as whole.
+ */
+const OVERVIEW_MARGIN = 1.18
+
 /** The two framings the rig moves between, plus the points it looks at. */
 export interface Shot {
   readonly closeHeight: number
@@ -34,6 +43,9 @@ export interface Shot {
   readonly entryY: number
   /** Look-at height for the finished board. */
   readonly endY: number
+  /** The whole device at once: look-at and framed height for the overview. */
+  readonly overviewY: number
+  readonly overviewHeight: number
   readonly halfFovTan: number
 }
 
@@ -141,6 +153,16 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
      */
     entryY: anchorTo(deviceTop, closeHeight, halfFovTan, viewportHeight, 1),
     endY: anchorTo(deviceBottom, wideHeight, halfFovTan, viewportHeight, -1),
+    /*
+     * Centred on the device rather than hung off an edge, because for once the
+     * whole thing is meant to be in view and there is no action to favour.
+     *
+     * Fitted to whichever dimension is tighter: a deep board is taller than it
+     * is wide, a shallow one the other way about, and on a wide window it is the
+     * height that runs out first either way.
+     */
+    overviewY: geo.centerY,
+    overviewHeight: Math.max(geo.height * OVERVIEW_MARGIN, (geo.width * OVERVIEW_MARGIN) / aspect),
     halfFovTan,
   }
 }

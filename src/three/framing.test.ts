@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_ROWS, MIN_ROWS, ROW_GAP, boardGeometry } from '../game/geometry'
+import {
+  BOARD_DEPTH,
+  FLOOR_THICKNESS,
+  MAX_ROWS,
+  MIN_ROWS,
+  ROW_GAP,
+  boardGeometry,
+} from '../game/geometry'
 import { frameEdgeY, shotFor } from './framing'
 
 /** Every row count the slider offers. */
@@ -48,6 +55,36 @@ describe.each(VIEWPORTS)('framing at $width×$height', ({ width, height }) => {
       expect(bottom, `${rows} rows`).toBeLessThan(geo.floorY)
       const top = frameEdgeY(shot.endY, shot.wideHeight, shot.halfFovTan, 1)
       expect(top, `${rows} rows`).toBeGreaterThan(geo.binTopY)
+    }
+  })
+
+  it('fits the entire device in the overview, at every depth', () => {
+    for (const { rows, geo, shot } of shots) {
+      const { overviewY: y, overviewHeight: h, halfFovTan } = shot
+
+      // Measured at the faces that actually crop: the plinth's front face is
+      // nearer the camera than the board plane, so it projects lowest.
+      const bottom = frameEdgeY(y, h, halfFovTan, -1, BOARD_DEPTH * 0.65)
+      const top = frameEdgeY(y, h, halfFovTan, 1, BOARD_DEPTH / 2)
+
+      expect(bottom, `${rows} rows`).toBeLessThan(geo.floorY - FLOOR_THICKNESS)
+      expect(top, `${rows} rows`).toBeGreaterThan(geo.topY)
+    }
+  })
+
+  it('shows more of the world in the overview than any other shot', () => {
+    for (const { rows, shot } of shots) {
+      expect(shot.overviewHeight, `${rows} rows`).toBeGreaterThan(shot.wideHeight)
+      expect(shot.overviewHeight, `${rows} rows`).toBeGreaterThan(shot.closeHeight)
+    }
+  })
+
+  it('fits the device across as well as down', () => {
+    for (const { rows, geo, shot } of shots) {
+      // The frame's width is its height times the aspect; the board has to sit
+      // inside it, which on a narrow window is the harder of the two fits.
+      const framedWidth = shot.overviewHeight * (width / height)
+      expect(framedWidth, `${rows} rows`).toBeGreaterThan(geo.width)
     }
   })
 
