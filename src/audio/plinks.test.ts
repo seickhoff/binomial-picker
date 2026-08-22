@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_ROWS, boardGeometry } from '../game/geometry'
-import { rowOfPeg, voiceForPeg } from './plinks'
+import { CENTRE_PITCH, rowOfPeg, voiceForPeg } from './plinks'
 
 /** Index of the peg at `withinRow` in `row`, as the board numbers them. */
 const pegIndex = (row: number, withinRow: number) => (row * (row + 1)) / 2 + withinRow
@@ -19,7 +19,7 @@ describe('the note a peg rings', () => {
     // Row 2 has three pegs, so the middle one is dead centre.
     const middle = voiceForPeg(pegIndex(2, 1))
     expect(middle.pan).toBe(0)
-    expect(middle.frequency).toBeCloseTo(880, 5)
+    expect(middle.frequency).toBeCloseTo(CENTRE_PITCH, 5)
   })
 
   it('rings higher to the right and lower to the left', () => {
@@ -52,9 +52,16 @@ describe('the note a peg rings', () => {
     const geo = boardGeometry(MAX_ROWS)
     const pitches = geo.pegs.map((_, index) => voiceForPeg(index).frequency)
 
-    // Clamped, so a 24-row board doesn't run off into inaudibility at the edges.
-    expect(Math.min(...pitches)).toBeGreaterThan(200)
-    expect(Math.max(...pitches)).toBeLessThan(4000)
+    // An octave either side of centre, clamped, so a 24-row board doesn't run off
+    // the edges of hearing where its rows are widest.
+    expect(Math.min(...pitches)).toBeCloseTo(CENTRE_PITCH / 2, 5)
+    expect(Math.max(...pitches)).toBeCloseTo(CENTRE_PITCH * 2, 5)
+  })
+
+  it('keeps the upper modes of the metal inside the audible band', () => {
+    // The brightest thing rendered is the top mode of the highest note: 5.4x the
+    // strike pitch. Past about 16kHz it is work done for nobody.
+    expect(CENTRE_PITCH * 2 * 5.4).toBeLessThan(20_000)
   })
 
   it('never pans beyond the speakers', () => {
