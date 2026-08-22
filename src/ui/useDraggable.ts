@@ -10,10 +10,9 @@ const EDGE_MARGIN = 48
  * state: a drag fires pointer events at screen refresh rate, and re-rendering a
  * panel containing a chart and a table that often would make it lag the cursor.
  *
- * Wherever CSS puts the panel is where it opens; the drag is a delta from there.
- * The limits are measured from the panel itself, so it can be moved until it is
- * nearly off one edge but never past — and never upward past the top of the
- * window, since the grip is along its top edge and would go with it.
+ * Wherever CSS puts the panel is where it opens, and the drag is a delta from
+ * there — bounded so the gaps it opens with are the closest it can ever get to
+ * the top and right edges. See `measure`.
  */
 export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLElement>() {
   const panel = useRef<TPanel>(null)
@@ -39,7 +38,17 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
       card.style.transform = `translate(${x}px, ${y}px)`
     }
 
-    /** The range of offsets that keeps the panel reachable. */
+    /**
+     * The range of offsets the panel may be dragged through.
+     *
+     * The gaps it opens with are the tightest it may ever sit: it can be moved
+     * away from the top and right edges, never toward them. So it cannot be
+     * tucked under the nav — where the nav would draw over it and the grip would
+     * be unreachable — and it cannot be pushed off the side of the window.
+     *
+     * Away from those two edges it runs to a margin, which is what makes room to
+     * see the board behind it: the point of being draggable at all.
+     */
     const measure = () => {
       const box = card.getBoundingClientRect()
       // Where CSS alone would put it: the current position less the drag so far.
@@ -47,13 +56,11 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
       const top = box.top - offset.current.y
 
       return {
-        // Sideways, keep a strip of the card on screen at either edge.
-        minX: EDGE_MARGIN - (left + box.width),
-        maxX: window.innerWidth - EDGE_MARGIN - left,
-        // Never above the window: the grip is the card's top edge, and pushing it
-        // off the top would leave nothing to drag it back by.
-        minY: -top,
-        maxY: window.innerHeight - EDGE_MARGIN - top,
+        // Never positive: zero is the opening position, at its own right-hand gap.
+        minX: Math.min(0, EDGE_MARGIN - left),
+        maxX: 0,
+        minY: 0,
+        maxY: Math.max(0, window.innerHeight - EDGE_MARGIN - (top + box.height)),
       }
     }
 
