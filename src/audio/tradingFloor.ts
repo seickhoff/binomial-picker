@@ -15,7 +15,7 @@
  * The whole floor hangs off one gain of its own, so opening and closing it is a
  * fade rather than a switch, and nothing ever clicks.
  */
-import { audioDevice } from './context'
+import { audioDevice, holdAwake } from './context'
 
 /** Peak master level. A background, not a feature. */
 const FULL_VOLUME = 0.5
@@ -40,6 +40,8 @@ interface Floor {
   readonly master: GainNode
   readonly sources: readonly AudioScheduledSourceNode[]
   readonly noise: AudioBuffer
+  /** Releases the device's keep-awake hold; the floor plays indefinitely. */
+  readonly wake: () => void
   /** Timer for the next scheduled shout. */
   shoutTimer: number | null
   closing: boolean
@@ -175,7 +177,12 @@ function keepShouting(active: Floor): void {
 
   active.shoutTimer = window.setTimeout(() => {
     if (floor !== active || active.closing) return
-    scheduleShout(active, active.context.currentTime + 0.02)
+    // A suspended device has a frozen clock — a backgrounded tab, most likely —
+    // so scheduling into it would pile every shout missed while away onto the
+    // instant it resumes. The chain keeps ticking so the floor comes back.
+    if (active.context.state === 'running') {
+      scheduleShout(active, active.context.currentTime + 0.02)
+    }
     keepShouting(active)
   }, gap * 1000)
 }
@@ -201,7 +208,15 @@ export function openFloor(): void {
 
   const noise = noiseBuffer(context)
   const sources = buildMurmur(context, noise, master)
-  floor = { context, master, sources, noise, shoutTimer: null, closing: false }
+  floor = {
+    context,
+    master,
+    sources,
+    noise,
+    wake: holdAwake(),
+    shoutTimer: null,
+    closing: false,
+  }
 
   master.gain.setValueAtTime(0.0001, context.currentTime)
   master.gain.exponentialRampToValueAtTime(FULL_VOLUME, context.currentTime + FADE_IN)
@@ -245,6 +260,7 @@ function closeFloorNow(): void {
     }
   }
   // The device is shared with the plinks and the bell, so only the floor's own
-  // chain comes down here.
+  // chain comes down here — and letting go of the hold lets it idle again.
   active.master.disconnect()
+  active.wake()
 }

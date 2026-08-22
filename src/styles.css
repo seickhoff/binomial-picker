@@ -369,6 +369,10 @@ body {
 
 .ticker-item[data-closed='true'] .ticker-live {
   visibility: hidden;
+  /* Hidden is not stopped: a `visibility: hidden` element goes on animating, so
+     a closed field left twenty invisible dots pulsing for as long as the results
+     were on screen. The box stays, to hold the row's width. */
+  animation: none;
 }
 
 @keyframes ticker-pulse {
@@ -767,37 +771,55 @@ input[type='range']:focus-visible {
  * an unsettled round read as a finished one. The ring rides on the accent of
  * whichever mode is playing.
  */
+/*
+ * The ring is a pseudo-element that scales and fades, rather than an animated
+ * box-shadow.
+ *
+ * They look the same and cost quite different amounts. A box-shadow spread has
+ * to be repainted every frame, and this animation runs forever on the results
+ * screen — so it was a permanent repaint, on a laptop that has already been
+ * asked to run cool. Transform and opacity are the two properties the compositor
+ * can animate on its own, without waking the main thread to paint at all.
+ */
 .btn-alert {
-  --alert-ring: rgba(57, 135, 229, 0.8);
-  --alert-ring-fade: rgba(57, 135, 229, 0);
-  animation: alert-pulse 1.4s ease-out infinite;
+  --alert-ring: rgba(57, 135, 229, 0.85);
+  position: relative;
 }
 
 .app[data-mode='stock'] .btn-alert {
-  --alert-ring: rgba(210, 165, 60, 0.85);
-  --alert-ring-fade: rgba(210, 165, 60, 0);
+  --alert-ring: rgba(210, 165, 60, 0.9);
 }
 
-@keyframes alert-pulse {
-  0% {
-    box-shadow: 0 0 0 0 var(--alert-ring);
-    filter: brightness(1);
+.btn-alert::after {
+  content: '';
+  position: absolute;
+  /* Inset, so the ring's grown size still sits inside the panel's padding. */
+  inset: 1px;
+  border-radius: inherit;
+  border: 2px solid var(--alert-ring);
+  pointer-events: none;
+  animation: alert-ring 1.4s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes alert-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
   }
-  55% {
-    box-shadow: 0 0 0 9px var(--alert-ring-fade);
-    filter: brightness(1.22);
-  }
-  100% {
-    box-shadow: 0 0 0 0 var(--alert-ring-fade);
-    filter: brightness(1);
+  to {
+    /* Barely a tenth larger: at button size that reads as a pulse, and it keeps
+       the ring inside its own margin instead of over the neighbouring button. */
+    transform: scale(1.09);
+    opacity: 0;
   }
 }
 
 /* Still marked out as the one to press, just without the movement. */
 @media (prefers-reduced-motion: reduce) {
-  .btn-alert {
+  .btn-alert::after {
     animation: none;
-    box-shadow: 0 0 0 3px var(--alert-ring);
+    opacity: 1;
   }
 }
 
