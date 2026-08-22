@@ -13,3 +13,13 @@ import type { Mode, Phase } from '../game/types'
 export function isFloorOpen(mode: Mode, phase: Phase, enabled: boolean): boolean {
   return enabled && mode === 'stock' && phase === 'running'
 }
+
+/**
+ * Whether the session has just closed, which is what the closing bell marks.
+ *
+ * The results phase is exactly that moment: the last marble has landed and the
+ * prices are final.
+ */
+export function isMarketClosed(mode: Mode, phase: Phase, enabled: boolean): boolean {
+  return enabled && mode === 'stock' && phase === 'results'
+}

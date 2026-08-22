@@ -3,8 +3,20 @@ import { binOf, drawRound } from './rounds'
 import { binomialPmf } from './binomial'
 
 const SAMPLES = 200_000
-/** Chi-square upper tail is well under this for any dof we use here. */
-const CHI2_LIMIT = 45
+
+/**
+ * How large a chi-square is allowed to be, for `dof` degrees of freedom.
+ *
+ * A flat limit was wrong, and flaked: chi-square has mean `dof` and variance
+ * `2·dof`, so what counts as a large value depends on how many bins were
+ * counted, and a 24-row board counts five times as many as a 4-row one. At
+ * five sigma this all but never fails by chance, while still being nowhere near
+ * loose enough to pass a biased board — the rigid-body version this model
+ * replaced scored in the thousands.
+ */
+function chiSquareLimit(dof: number): number {
+  return dof + 5 * Math.sqrt(2 * dof)
+}
 
 function draw(ids: readonly string[], rows: number) {
   return drawRound({ entrantIds: ids, rows })
@@ -38,12 +50,16 @@ describe.each([4, 10, 16, 24])('drawing a round of %i rows', (rows) => {
     expect(variance).toBeCloseTo(rows * 0.25, 1)
 
     let chi2 = 0
+    let bins = 0
     for (let k = 0; k <= rows; k++) {
       const expected = pmf[k] * SAMPLES
+      // Bins too rare to have a meaningful count of their own would dominate the
+      // statistic through their tiny denominators.
       if (expected < 5) continue
       chi2 += (counts[k] - expected) ** 2 / expected
+      bins += 1
     }
-    expect(chi2).toBeLessThan(CHI2_LIMIT)
+    expect(chi2).toBeLessThan(chiSquareLimit(bins - 1))
   })
 
   it('gives every entrant exactly one flip per row', () => {

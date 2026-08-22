@@ -20,6 +20,8 @@ export function SetupPanel() {
   const setFancyGraphics = useGame((s) => s.setFancyGraphics)
   const floorSound = useGame((s) => s.floorSound)
   const setFloorSound = useGame((s) => s.setFloorSound)
+  const plinkSound = useGame((s) => s.plinkSound)
+  const setPlinkSound = useGame((s) => s.setPlinkSound)
   const addPlayer = useGame((s) => s.addPlayer)
   const removePlayer = useGame((s) => s.removePlayer)
   const renamePlayer = useGame((s) => s.renamePlayer)
@@ -210,6 +212,14 @@ export function SetupPanel() {
           />
           Bloom, shadows &amp; trails
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={plinkSound}
+            onChange={(e) => setPlinkSound(e.target.checked)}
+          />
+          Plink on every peg
+        </label>
         {/* Only offered in the mode that has a floor to stand on. */}
         {mode === 'stock' && (
           <label className="toggle">
@@ -218,7 +228,7 @@ export function SetupPanel() {
               checked={floorSound}
               onChange={(e) => setFloorSound(e.target.checked)}
             />
-            Trading floor sound
+            Trading floor &amp; opening bell
           </label>
         )}
       </section>

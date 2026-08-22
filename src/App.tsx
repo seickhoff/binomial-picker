@@ -6,10 +6,10 @@ import { SetupPanel } from './ui/SetupPanel'
 import { TickerTape } from './ui/TickerTape'
 import { MODES } from './game/modes'
 import { useGame } from './game/store'
-import { useTradingFloor } from './audio/useTradingFloor'
+import { useGameAudio } from './audio/useGameAudio'
 
 export default function App() {
-  useTradingFloor()
+  useGameAudio()
 
   const phase = useGame((s) => s.phase)
   const start = useGame((s) => s.start)

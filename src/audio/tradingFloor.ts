@@ -12,9 +12,10 @@
  * cost a licence, a megabyte over the wire, and a fetch that can fail — for a
  * sound this app renders the same way it renders its backdrop.
  *
- * Everything hangs off one master gain, so opening and closing the floor is a
+ * The whole floor hangs off one gain of its own, so opening and closing it is a
  * fade rather than a switch, and nothing ever clicks.
  */
+import { audioDevice } from './context'
 
 /** Peak master level. A background, not a feature. */
 const FULL_VOLUME = 0.5
@@ -187,25 +188,16 @@ function keepShouting(active: Floor): void {
  * round actually starts — which is always a click or a keypress away.
  */
 export function openFloor(): void {
-  if (floor && !floor.closing) {
-    void floor.context.resume()
-    return
-  }
+  if (floor && !floor.closing) return
   if (floor) closeFloorNow()
 
-  // Ambience is not worth taking the page down for: a browser without Web Audio,
-  // or one that refuses a context, simply gets a silent game.
-  if (typeof AudioContext === 'undefined') return
-  let context: AudioContext
-  try {
-    context = new AudioContext()
-  } catch {
-    return
-  }
+  const device = audioDevice()
+  if (!device) return
+  const { context } = device
 
   const master = context.createGain()
   master.gain.value = 0.0001
-  master.connect(context.destination)
+  master.connect(device.output)
 
   const noise = noiseBuffer(context)
   const sources = buildMurmur(context, noise, master)
@@ -215,9 +207,6 @@ export function openFloor(): void {
   master.gain.exponentialRampToValueAtTime(FULL_VOLUME, context.currentTime + FADE_IN)
 
   keepShouting(floor)
-  // A context built during a click starts running; one built any other way
-  // needs waking, and resuming an already-running context is a no-op.
-  void context.resume()
 }
 
 /** Fades the floor out and releases the audio device. */
@@ -255,12 +244,7 @@ function closeFloorNow(): void {
       // Already stopped; nothing to do.
     }
   }
+  // The device is shared with the plinks and the bell, so only the floor's own
+  // chain comes down here.
   active.master.disconnect()
-  void active.context.close()
-}
-
-/** Quietens the floor without tearing it down — for a backgrounded tab. */
-export function holdFloor(hold: boolean): void {
-  if (!floor || floor.closing) return
-  void (hold ? floor.context.suspend() : floor.context.resume())
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isFloorOpen } from './ambience'
+import { isFloorOpen, isMarketClosed } from './ambience'
 
 describe('when the trading floor is audible', () => {
   it('opens for a live Stock Market drop', () => {
@@ -19,5 +19,23 @@ describe('when the trading floor is audible', () => {
 
   it('stays shut when the setting is off', () => {
     expect(isFloorOpen('stock', 'running', false)).toBe(false)
+  })
+})
+
+describe('when the closing bell rings', () => {
+  it('rings on the results, where the floor has just gone quiet', () => {
+    expect(isMarketClosed('stock', 'results', true)).toBe(true)
+    // The two never overlap: one hands over to the other.
+    expect(isFloorOpen('stock', 'results', true)).toBe(false)
+  })
+
+  it('does not ring mid-drop, before setup, or in Black Swan', () => {
+    expect(isMarketClosed('stock', 'running', true)).toBe(false)
+    expect(isMarketClosed('stock', 'setup', true)).toBe(false)
+    expect(isMarketClosed('blackSwan', 'results', true)).toBe(false)
+  })
+
+  it('is silenced by the same setting as the floor', () => {
+    expect(isMarketClosed('stock', 'results', false)).toBe(false)
   })
 })

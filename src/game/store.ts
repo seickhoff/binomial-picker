@@ -64,8 +64,12 @@ export interface GameState {
   showLabels: boolean
   /** Bloom, shadows and reflections. Off is a big win on weak GPUs. */
   fancyGraphics: boolean
-  /** Trading floor ambience while a Stock Market drop is live. */
+  /** Trading floor ambience, and its opening bell, in Stock Market mode. */
   floorSound: boolean
+  /** A note for every peg a marble strikes. */
+  plinkSound: boolean
+  /** Silences everything, without forgetting which sounds were wanted. */
+  muted: boolean
   round: Round
   history: Round[]
   /** Bumped for every release so the physics marbles remount cleanly. */
@@ -80,6 +84,8 @@ export interface GameState {
   setShowLabels: (show: boolean) => void
   setFancyGraphics: (fancy: boolean) => void
   setFloorSound: (on: boolean) => void
+  setPlinkSound: (on: boolean) => void
+  setMuted: (muted: boolean) => void
   addPlayer: () => void
   removePlayer: (id: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -112,6 +118,8 @@ export const useGame = create<GameState>()(
       showLabels: true,
       fancyGraphics: true,
       floorSound: true,
+      plinkSound: true,
+      muted: false,
       round: emptyRound(
         0,
         DEFAULT_ROWS,
@@ -132,6 +140,8 @@ export const useGame = create<GameState>()(
       setShowLabels: (showLabels) => set({ showLabels }),
       setFancyGraphics: (fancyGraphics) => set({ fancyGraphics }),
       setFloorSound: (floorSound) => set({ floorSound }),
+      setPlinkSound: (plinkSound) => set({ plinkSound }),
+      setMuted: (muted) => set({ muted }),
 
       addPlayer: () =>
         set((state) =>
@@ -234,6 +244,8 @@ export const useGame = create<GameState>()(
         showLabels: state.showLabels,
         fancyGraphics: state.fancyGraphics,
         floorSound: state.floorSound,
+        plinkSound: state.plinkSound,
+        muted: state.muted,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return
