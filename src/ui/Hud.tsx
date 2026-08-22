@@ -11,6 +11,8 @@ export function Hud() {
   const players = useGame((s) => s.players)
   const phase = useGame((s) => s.phase)
   const mode = useGame((s) => s.mode)
+  const floorSound = useGame((s) => s.floorSound)
+  const setFloorSound = useGame((s) => s.setFloorSound)
   const backToSetup = useGame((s) => s.backToSetup)
 
   const ranked = rankRound(round, players, mode)
@@ -31,6 +33,20 @@ export function Hud() {
           <span className="hint">
             {round.landings.length}/{round.entrantIds.length} landed
           </span>
+          {/* The setup panel is hidden while a round runs, so the sound needs an
+              off switch here too — otherwise the only way to stop it is to
+              leave the round. */}
+          {mode === 'stock' && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              aria-pressed={!floorSound}
+              onClick={() => setFloorSound(!floorSound)}
+              title={floorSound ? 'Mute the trading floor' : 'Unmute the trading floor'}
+            >
+              {floorSound ? 'Mute' : 'Unmute'}
+            </button>
+          )}
           {/* Always available, mid-drop included, so a round can never trap you. */}
           <button
             type="button"

@@ -64,6 +64,8 @@ export interface GameState {
   showLabels: boolean
   /** Bloom, shadows and reflections. Off is a big win on weak GPUs. */
   fancyGraphics: boolean
+  /** Trading floor ambience while a Stock Market drop is live. */
+  floorSound: boolean
   round: Round
   history: Round[]
   /** Bumped for every release so the physics marbles remount cleanly. */
@@ -77,6 +79,7 @@ export interface GameState {
   setDropMode: (mode: DropMode) => void
   setShowLabels: (show: boolean) => void
   setFancyGraphics: (fancy: boolean) => void
+  setFloorSound: (on: boolean) => void
   addPlayer: () => void
   removePlayer: (id: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -108,6 +111,7 @@ export const useGame = create<GameState>()(
       players: initialPlayers,
       showLabels: true,
       fancyGraphics: true,
+      floorSound: true,
       round: emptyRound(
         0,
         DEFAULT_ROWS,
@@ -127,6 +131,7 @@ export const useGame = create<GameState>()(
       setDropMode: (dropMode) => set({ dropMode }),
       setShowLabels: (showLabels) => set({ showLabels }),
       setFancyGraphics: (fancyGraphics) => set({ fancyGraphics }),
+      setFloorSound: (floorSound) => set({ floorSound }),
 
       addPlayer: () =>
         set((state) =>
@@ -228,6 +233,7 @@ export const useGame = create<GameState>()(
         players: state.players,
         showLabels: state.showLabels,
         fancyGraphics: state.fancyGraphics,
+        floorSound: state.floorSound,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return

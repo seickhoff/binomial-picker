@@ -18,6 +18,8 @@ export function SetupPanel() {
   const setDropMode = useGame((s) => s.setDropMode)
   const setShowLabels = useGame((s) => s.setShowLabels)
   const setFancyGraphics = useGame((s) => s.setFancyGraphics)
+  const floorSound = useGame((s) => s.floorSound)
+  const setFloorSound = useGame((s) => s.setFloorSound)
   const addPlayer = useGame((s) => s.addPlayer)
   const removePlayer = useGame((s) => s.removePlayer)
   const renamePlayer = useGame((s) => s.renamePlayer)
@@ -208,6 +210,17 @@ export function SetupPanel() {
           />
           Bloom, shadows &amp; trails
         </label>
+        {/* Only offered in the mode that has a floor to stand on. */}
+        {mode === 'stock' && (
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={floorSound}
+              onChange={(e) => setFloorSound(e.target.checked)}
+            />
+            Trading floor sound
+          </label>
+        )}
       </section>
 
       <button
