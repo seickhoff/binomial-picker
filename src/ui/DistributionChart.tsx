@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { binomialPmf, formatOdds, formatPercent } from '../game/binomial'
-import { closingPrice, formatMove, formatPrice, netMove } from '../game/modes'
+import { slotLabel } from '../game/modes'
 import { colorForSlot } from '../game/palette'
 import { axisLabelInterval, chartSubtitle, chartTitle } from './presenters'
 import type { Landing, Mode, Player } from '../game/types'
@@ -38,13 +38,7 @@ export function DistributionChart({
   openPrice,
 }: DistributionChartProps) {
   const stock = mode === 'stock'
-  /** Every bin is one outcome: a closing price, a move, or just a bin number. */
-  const labelFor = (bin: number) => {
-    if (!stock) return String(bin)
-    return openPrice === null
-      ? formatMove(netMove(bin, rows))
-      : formatPrice(closingPrice(bin, rows, openPrice))
-  }
+  const labelFor = (bin: number) => slotLabel({ mode, bin, rows, openPrice })
   const [hovered, setHovered] = useState<number | null>(null)
   const pmf = useMemo(() => binomialPmf(rows), [rows])
   const peak = Math.max(...pmf)

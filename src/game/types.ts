@@ -68,6 +68,14 @@ export interface Round {
   readonly landings: readonly Landing[]
   /** True for a re-drop run to break a tie. */
   readonly tieBreak: boolean
+  /**
+   * What each row of pegs is worth, in dollars, one per row.
+   *
+   * Drawn with the flips and recorded here, so a session's own market conditions
+   * stay with it: a series charted across days keeps each day at the volatility
+   * it was actually played at.
+   */
+  readonly rowMoves: readonly number[]
   /** The flips each entrant will take, drawn before the round is rendered. */
   readonly plan: Readonly<Record<string, readonly number[]>>
   /**

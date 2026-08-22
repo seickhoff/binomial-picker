@@ -7,7 +7,7 @@ import { MARBLE_RADIUS, type BoardGeometry } from '../game/geometry'
 import { colorForSlot } from '../game/palette'
 import { openPriceOf } from '../game/scoring'
 import { useGame } from '../game/store'
-import { formatPrice, priceAfterSteps } from '../game/modes'
+import { formatPrice, trendOf, walkOf } from '../game/modes'
 import type { DropMode, Player } from '../game/types'
 import { flashPeg } from '../live/pegFlashes'
 import { clearMarbleFocus, dropMarbleFocus, reportMarbleY } from '../live/cameraFocus'
@@ -179,6 +179,7 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
             labelScale={labelScale}
             // Stock Market: the tag ticks the running price as it falls.
             openPrice={mode === 'stock' ? openPriceOf(player.id, round) : null}
+            rowMoves={round.rowMoves}
             onLand={recordLanding}
           />
         )
@@ -197,6 +198,8 @@ interface MarbleProps {
   showLabel: boolean
   /** World size of the name tag; see `overlayScale`. */
   labelScale: number
+  /** What each row is worth, so the tag ticks the price the path is making. */
+  rowMoves: readonly number[]
   /** Non-null in Stock Market mode: what this player's stock opened at. */
   openPrice: number | null
   onLand: (playerId: string, bin: number, flips: readonly number[]) => void
@@ -211,6 +214,7 @@ function Marble({
   showLabel,
   labelScale,
   openPrice,
+  rowMoves,
   onLand,
 }: MarbleProps) {
   const group = useRef<Group>(null)
@@ -218,10 +222,22 @@ function Marble({
   const label = useRef<HTMLSpanElement>(null)
   const clock = useRef(0)
   const nextSegment = useRef(0)
-  const shownNet = useRef(Number.NaN)
+  const shownRow = useRef(Number.NaN)
   const scored = useRef(false)
 
   const color = colorForSlot(player.slot).hex
+
+  /*
+   * This marble's price at every row, worked out once.
+   *
+   * A running total of steps is no longer enough to price a marble: rows are
+   * worth different amounts, so what matters is which rows it went right on, not
+   * how many. The walk holds that, and the tag reads it by row as it falls.
+   */
+  const walk = useMemo(
+    () => (openPrice === null ? [] : walkOf(path.flips, openPrice, 'stock', rowMoves)),
+    [path, openPrice, rowMoves],
+  )
 
   // Stop steering the camera the moment this marble leaves the board.
   useEffect(() => () => dropMarbleFocus(player.id), [player.id])
@@ -247,10 +263,9 @@ function Marble({
       if (seg.pegIndex !== null) flashPeg(seg.pegIndex)
       nextSegment.current += 1
 
-      if (openPrice !== null && seg.decisions !== shownNet.current) {
-        shownNet.current = seg.decisions
-        const net = path.netAfter[seg.decisions] ?? 0
-        const price = priceAfterSteps(openPrice, net)
+      if (openPrice !== null && seg.decisions !== shownRow.current) {
+        shownRow.current = seg.decisions
+        const price = walk[seg.decisions] ?? openPrice
         // Feed the ticker, which lives outside the Canvas.
         publishPrice(player.id, price)
         const node = label.current
@@ -258,7 +273,9 @@ function Marble({
           // Written straight to the DOM: a per-frame React update for every
           // marble would cost far more than the text is worth.
           node.textContent = `${player.name} ${formatPrice(price)}`
-          node.dataset.trend = net > 0 ? 'up' : net < 0 ? 'down' : 'flat'
+          // Against the open, not the step count: a marble can be several steps
+          // right of centre and still down, having gone left on the wild row.
+          node.dataset.trend = trendOf(price - openPrice)
         }
       }
     }
@@ -266,7 +283,7 @@ function Marble({
     if (!scored.current && t >= path.landingTime) {
       scored.current = true
       if (openPrice !== null) {
-        closeQuote(player.id, priceAfterSteps(openPrice, path.netAfter[geo.rows] ?? 0))
+        closeQuote(player.id, walk[walk.length - 1] ?? openPrice)
       }
       onLand(player.id, path.bin, path.flips)
     }

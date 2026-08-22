@@ -16,6 +16,30 @@ resuming **from the price it reached**, not from $100. The market simply keeps
 going, so a stock that was behind can rally past the leaders, and the winner is
 whoever is highest when it closes.
 
+Each session is a **dated day of trading**, announced on its own placard, and an
+unsettled close rolls into the next day by itself. Days are dated forward one
+trading day at a time, skipping weekends — a placard reading "Day 2 · Saturday"
+would undo the illusion the placards exist to build.
+
+### Volatility
+
+Optional, and Stock Market only. With it on, every peg row is drawn worth **1¢, 5¢
+or 10¢ on top of the base 50¢**, and every player crossing that row wears it —
+added going right, subtracted going left.
+
+The dollars still come from the lattice, so a slot is still a dollar and the
+ladder under the bins still means what it says. What volatility decides is the
+small change, which is where a real tape carries its noise: two marbles in the
+same bin close a few cents apart, and whoever caught the wild row going the right
+way is ahead. It makes exact price ties rare without changing who was winning.
+
+It stays fair because a row is worth the same to everyone in it. Each player meets
+the identical row and tosses their own coin against it, so every player has the
+same distribution of closes — a market can be jumpy without being rigged. Prices
+are summed in whole cents, since adding nickels in floating point leaves two
+genuinely level players differing by a millionth of a cent, which is enough to
+defeat a tie.
+
 ### Settling
 
 How long a series runs is a setting:
@@ -91,6 +115,22 @@ from loss to gain. Gain/loss colours are the reserved status pair and always
 ship with a ▲/▼ glyph, so the colour is never the only cue. No image assets —
 it's all shader and CSS.
 
+### Sound
+
+No audio files either. The trading floor is a room full of overlapping voices,
+which is what noise sounds like once it is band-passed around the frequencies
+speech lives in and swelled by a slow, uneven envelope; shouts go on top as short
+bursts, pitched and panned differently every time. The bell is inharmonic
+partials at ratios like 2.76 and 5.40 with the high ones dying first — which is
+why a bell starts as a clang and settles into a hum — rung as a flurry, because
+the real thing is a hand bell rung hard and fast. Every peg strike rings a note,
+pitched and panned by where the peg sits, on a pentatonic scale so that dozens
+landing at once stay consonant.
+
+One shared audio device carries all of it, so muting is a single ramp, and it
+suspends itself five seconds after the last sound rather than waking its thread
+every three milliseconds for silence.
+
 ### The roster
 
 2 to 20 players. Names and the row count are remembered in `localStorage`, so
@@ -122,15 +162,24 @@ src/
     geometry.ts  peg/bin/wall layout, all derived from the row count
     modes.ts     the two modes: their rules, copy and price arithmetic
     scoring.ts   who won — ranking, ties, closing prices
+    series.ts    a run of sessions read as one price history, and one long drop
+    calendar.ts  dating sessions, a trading day at a time
     store.ts     zustand state and transitions (mechanism, not policy)
     palette.ts   the player colours
   live/          per-frame channels between the scene and everything else.
     priceFeed.ts    marbles publish prices, the ticker reads them
     cameraFocus.ts  marbles publish height, the camera follows
-    pegFlashes.ts   marbles announce strikes, the pegs light up
+    pegFlashes.ts   marbles announce strikes; the pegs light and the speakers click
+  audio/         every sound, synthesised — no audio files anywhere.
+    tradingFloor.ts  the room: filtered noise, and shouts across it
+    bell.ts          the opening and closing bell, from inharmonic partials
+    plinks.ts        a note per peg, pitched and panned by where it is
+    ambience.ts      when the floor is open, as a pure rule
   three/         the scene. Board (board/), Marbles, CameraRig, Stage, Backdrop.
     framing.ts   what the camera frames, as pure arithmetic — and tested
-  ui/            panels and the chart. presenters.ts holds the wording.
+  ui/            panels and charts. presenters.ts holds the wording.
+    curve.ts     monotone cubic smoothing that cannot overshoot its data
+    keys.ts      which keystrokes belong to the app, and which to the control
 ```
 
 Two boundaries are worth calling out:

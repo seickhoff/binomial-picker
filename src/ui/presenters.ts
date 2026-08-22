@@ -6,7 +6,15 @@
  * side by side, and keeps the components to structure.
  */
 import { formatOdds, formatPercent } from '../game/binomial'
-import { MODES, START_PRICE, formatChange, formatPrice, priceRange } from '../game/modes'
+import {
+  BASE_PER_PEG,
+  MODES,
+  ROW_VOLATILITY,
+  START_PRICE,
+  formatChange,
+  formatPrice,
+  priceRange,
+} from '../game/modes'
 import type { Settlement } from '../game/scoring'
 import type { Mode, Player, RankedEntry, SettleRule } from '../game/types'
 
@@ -53,13 +61,42 @@ export function verdictDetail(
   return tied ? spread : `Bin ${bin} · ${spread}`
 }
 
+/**
+ * What the volatility setting does, said plainly — including its cost.
+ *
+ * Two things are worth stating outright. It is fair either way, because the
+ * row values are shared by the field: everyone meets the same row worth the same
+ * amount. And it takes the prices off the ladder under the bins, because once
+ * rows differ a slot no longer has one.
+ */
+export function volatilityHint(on: boolean): string {
+  const inCents = (step: number) => `${Math.round(step * 100)}¢`
+  const levels = [ROW_VOLATILITY.calm, ROW_VOLATILITY.mid, ROW_VOLATILITY.wild]
+    .map(inCents)
+    .join(', ')
+  return on
+    ? `Each row adds ${levels} to its move, the same row for everyone — so two marbles in one bin close a few cents apart.`
+    : `Every row moves the same ${inCents(BASE_PER_PEG)} a peg, so every marble in a bin closes at the same price.`
+}
+
 /** What this row count means, in the setup panel. */
-export function rowsSummary(mode: Mode, rows: number, pmf: readonly number[]): string {
+export function rowsSummary(
+  mode: Mode,
+  rows: number,
+  pmf: readonly number[],
+  volatileRows: boolean,
+): string {
   if (mode === 'stock') {
-    const [low, high] = priceRange(rows, START_PRICE)
-    return `Opens at ${formatPrice(START_PRICE)} · closes between ${formatPrice(
-      low,
-    )} and ${formatPrice(high)}`
+    // The widest a session can be: every row going one way, and with volatility
+    // on, every row drawn wild.
+    const worstCase = Array.from(
+      { length: rows },
+      () => BASE_PER_PEG + (volatileRows ? ROW_VOLATILITY.wild : 0),
+    )
+    const [low, high] = priceRange(START_PRICE, worstCase)
+    return `Opens at ${formatPrice(START_PRICE)} · ${
+      volatileRows ? 'closes no wider than' : 'closes between'
+    } ${formatPrice(low)} and ${formatPrice(high)}`
   }
   const likeliest = Math.max(...pmf)
   return `${rows + 1} bins · centre bin ${formatOdds(likeliest)} · edge bin ${formatOdds(pmf[0])}`

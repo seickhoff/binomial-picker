@@ -9,6 +9,8 @@ import { loadGame } from './testing'
 async function playSeries(sessions: number, binsPerSession: readonly number[][]) {
   const { useGame, settlementOf } = await loadGame()
   useGame.getState().setMode('stock')
+  // Dollar figures below assume every row is worth the same.
+  useGame.getState().setVolatileRows(false)
   useGame.getState().setSettleRule('winner')
   useGame.getState().start()
 
@@ -94,6 +96,8 @@ describe('a Stock Market series', () => {
   it('starts a new series back at day one', async () => {
     const { useGame } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     useGame.getState().release()
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { binomialPmf } from './binomial'
-import { START_PRICE } from './modes'
+import { START_PRICE, BASE_PER_PEG } from './modes'
 import { seriesOf, seriesTotals, seriesWalks } from './series'
 import { loadGame } from './testing'
 import type { Round } from './types'
@@ -12,6 +12,8 @@ import type { Round } from './types'
 async function playDays(binsPerDay: readonly number[][]) {
   const { useGame } = await loadGame()
   useGame.getState().setMode('stock')
+  // Dollar figures below assume every row is worth the same.
+  useGame.getState().setVolatileRows(false)
   useGame.getState().start()
 
   for (const [day, bins] of binsPerDay.entries()) {
@@ -70,8 +72,9 @@ describe('a series as one price history', () => {
       const walk = walks.find((w) => w.playerId === id)!
       const closed = walk.values[walk.values.length - 1]
       const landing = last.landings.find((l) => l.playerId === id)!
-      // The line's final point is the closing price the table shows.
-      const expected = last.openPrices[id] + (landing.bin - last.rows / 2)
+      // The line's final point is the closing price the table shows. Two pegs to
+      // a slot, and on a steady market every row is worth the same.
+      const expected = last.openPrices[id] + (2 * landing.bin - last.rows) * BASE_PER_PEG
       expect(closed).toBeCloseTo(expected, 10)
     }
   })
@@ -84,6 +87,7 @@ describe('a series as one price history', () => {
       entrantIds: ['a'],
       landings,
       tieBreak: index > 0,
+      rowMoves: Array.from({ length: rows }, () => BASE_PER_PEG),
       plan: {},
       openPrices: { a: START_PRICE },
     })
@@ -153,6 +157,7 @@ describe('a series as one longer drop', () => {
         },
       ],
       tieBreak: false,
+      rowMoves: Array.from({ length: 4 }, () => BASE_PER_PEG),
       plan: {},
       openPrices: { a: START_PRICE, b: START_PRICE },
     }

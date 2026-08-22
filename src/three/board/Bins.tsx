@@ -3,7 +3,7 @@ import { Html } from '@react-three/drei'
 import { Color } from 'three'
 import { binomialPmf } from '../../game/binomial'
 import { BOARD_DEPTH, FLOOR_THICKNESS, type BoardGeometry } from '../../game/geometry'
-import { closingPrice, formatMove, formatPrice, netMove, trendOf } from '../../game/modes'
+import { slotLabel, slotOffset, trendOf } from '../../game/modes'
 import { colorForSlot } from '../../game/palette'
 import type { Landing, Mode, Player } from '../../game/types'
 import {
@@ -41,11 +41,9 @@ export function SlotLabels({
   return (
     <group>
       {geo.binCenters.map((x, bin) => {
-        const move = netMove(bin, geo.rows)
-        const label =
-          openPrice === null
-            ? formatMove(move)
-            : formatPrice(closingPrice(bin, geo.rows, openPrice))
+        // Direction still reads off the position, whatever a row is worth.
+        const move = slotOffset(bin, geo.rows)
+        const label = slotLabel({ mode, bin, rows: geo.rows, openPrice })
         return (
           <Html
             key={bin}

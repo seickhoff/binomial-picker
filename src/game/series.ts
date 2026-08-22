@@ -54,7 +54,9 @@ function walkThrough(playerId: string, sessions: readonly Round[], mode: Mode): 
     // sessions that aren't adjacent.
     if (flips.length === 0) break
 
-    const walk = walkOf(flips, session.openPrices[playerId] ?? 0, mode)
+    // Each session at the scale it was played at, so a series charted across
+    // days is continuous even if the setting has since changed.
+    const walk = walkOf(flips, session.openPrices[playerId] ?? 0, mode, session.rowMoves)
     if (values.length === 0) values.push(walk[0])
     else dayBreaks.push(values.length - 1)
     values.push(...walk.slice(1))

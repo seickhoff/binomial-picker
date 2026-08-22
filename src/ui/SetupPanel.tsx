@@ -11,6 +11,7 @@ import {
   rowsSummary,
   settleRuleHint,
   tickerSymbols,
+  volatilityHint,
 } from './presenters'
 
 export function SetupPanel() {
@@ -34,6 +35,8 @@ export function SetupPanel() {
   const renamePlayer = useGame((s) => s.renamePlayer)
   const setPlayerActive = useGame((s) => s.setPlayerActive)
   const sortRoster = useGame((s) => s.sortRoster)
+  const volatileRows = useGame((s) => s.volatileRows)
+  const setVolatileRows = useGame((s) => s.setVolatileRows)
   const settleRule = useGame((s) => s.settleRule)
   const setSettleRule = useGame((s) => s.setSettleRule)
   const autoSessions = useGame((s) => s.autoSessions)
@@ -94,8 +97,23 @@ export function SetupPanel() {
             value={rows}
             onChange={(e) => setRows(Number(e.target.value))}
           />
-          <p className="hint">{rowsSummary(mode, rows, pmf)}</p>
+          <p className="hint">{rowsSummary(mode, rows, pmf, volatileRows)}</p>
         </div>
+
+        {/* Only Stock Market prices anything, so only it has a market to set. */}
+        {mode === 'stock' && (
+          <div className="field">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={volatileRows}
+                onChange={(e) => setVolatileRows(e.target.checked)}
+              />
+              Volatility: each row moves its own amount
+            </label>
+            <p className="hint">{volatilityHint(volatileRows)}</p>
+          </div>
+        )}
       </section>
 
       <section className="panel-section panel-section-players">

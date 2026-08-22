@@ -11,7 +11,7 @@ export const STORAGE_KEY = 'binomial-picker/v1'
  * during store creation when storage is synchronous, so seeding this before
  * importing the store is equivalent to a page load.
  */
-export function stubLocalStorage(seed?: string): Map<string, string> {
+function stubLocalStorage(seed?: string): Map<string, string> {
   const entries = new Map<string, string>()
   if (seed !== undefined) entries.set(STORAGE_KEY, seed)
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { MAX_ROWS, MIN_ROWS } from './geometry'
-import { START_PRICE } from './modes'
+import { BASE_PER_PEG, START_PRICE } from './modes'
 import { MAX_PLAYERS, MIN_PLAYERS } from './palette'
 import { drawRound } from './rounds'
 import { isRoundComplete, landingFor, priceAfter, settlementOf } from './scoring'
@@ -21,7 +21,7 @@ function makePlayer(slot: number): Player {
 }
 
 /** Players taking part in the next round. */
-export function activePlayers(players: readonly Player[]): Player[] {
+function activePlayers(players: readonly Player[]): Player[] {
   return players.filter((p) => p.active)
 }
 
@@ -49,15 +49,20 @@ function lowestFreeSlot(players: readonly Player[]): number {
   return players.length
 }
 
-function emptyRound(
-  index: number,
-  rows: number,
-  entrantIds: string[],
-  tieBreak: boolean,
-  openPrices: Record<string, number>,
-  plan: Record<string, readonly number[]> = {},
-): Round {
-  return { index, rows, entrantIds, landings: [], tieBreak, openPrices, plan }
+/**
+ * A round before anyone has landed.
+ *
+ * Named arguments rather than positional: there were already six, three of them
+ * numbers, and adding the price scale to that queue is how a row count ends up
+ * being read as a dollar figure.
+ */
+function emptyRound({
+  plan = {},
+  ...round
+}: Omit<Round, 'landings' | 'plan'> & {
+  plan?: Record<string, readonly number[]>
+}): Round {
+  return { ...round, plan, landings: [] }
 }
 
 /**
@@ -71,6 +76,11 @@ function openingPhase(mode: Mode): Phase {
   return mode === 'stock' ? 'opening' : 'running'
 }
 
+/** Some path that reaches `bin`: the rights taken first. */
+function pathTo(bin: number, rows: number): number[] {
+  return Array.from({ length: rows }, (_, row) => (row < bin ? 1 : -1))
+}
+
 /** Everyone opens a fresh series at the same price. */
 function openingPrices(entrantIds: readonly string[]): Record<string, number> {
   return Object.fromEntries(entrantIds.map((id) => [id, START_PRICE]))
@@ -81,6 +91,16 @@ export interface GameState {
   mode: Mode
   /** How far a series runs before it counts as decided. */
   settleRule: SettleRule
+  /**
+   * Draw each row's worth separately in Stock Market mode, instead of pricing
+   * every row the same.
+   *
+   * Fair either way: the row values are shared by the field, so every player
+   * meets the same rows. The dollars still come from the lattice — a slot is a
+   * dollar regardless — so all this decides is the cents, and whether two marbles
+   * in one bin close a few of them apart.
+   */
+  volatileRows: boolean
   /** Which chart the results panel shows. */
   chartView: ChartView
   /** Whether the chart is expanded. Closed by default: it is the tallest thing
@@ -122,6 +142,7 @@ export interface GameState {
   setRows: (rows: number) => void
   setMode: (mode: Mode) => void
   setSettleRule: (rule: SettleRule) => void
+  setVolatileRows: (on: boolean) => void
   setChartView: (view: ChartView) => void
   setChartOpen: (open: boolean) => void
   setDropMode: (mode: DropMode) => void
@@ -166,6 +187,7 @@ export const useGame = create<GameState>()(
       phase: 'setup',
       mode: 'blackSwan',
       settleRule: 'winner',
+      volatileRows: true,
       chartView: 'distribution',
       chartOpen: false,
       rows: DEFAULT_ROWS,
@@ -179,19 +201,21 @@ export const useGame = create<GameState>()(
       autoSessions: true,
       seriesStart: 0,
       overview: false,
-      round: emptyRound(
-        0,
-        DEFAULT_ROWS,
-        initialPlayers.map((p) => p.id),
-        false,
-        openingPrices(initialPlayers.map((p) => p.id)),
-      ),
+      round: emptyRound({
+        index: 0,
+        rows: DEFAULT_ROWS,
+        entrantIds: initialPlayers.map((p) => p.id),
+        tieBreak: false,
+        openPrices: openingPrices(initialPlayers.map((p) => p.id)),
+        rowMoves: Array.from({ length: DEFAULT_ROWS }, () => BASE_PER_PEG),
+      }),
       history: [],
       runToken: 0,
 
       setRows: (rows) => set({ rows: Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.round(rows))) }),
       setMode: (mode) => set({ mode }),
       setSettleRule: (settleRule) => set({ settleRule }),
+      setVolatileRows: (volatileRows) => set({ volatileRows }),
       setChartView: (chartView) => set({ chartView }),
       setChartOpen: (chartOpen) => set({ chartOpen }),
       setDropMode: (dropMode) => set({ dropMode }),
@@ -232,13 +256,13 @@ export const useGame = create<GameState>()(
       canStart: () => activePlayers(get().players).length >= MIN_PLAYERS,
 
       start: () => {
-        const { players, rows, runToken, mode } = get()
+        const { players, rows, runToken, mode, volatileRows } = get()
         const entrants = activePlayers(players)
         if (entrants.length < MIN_PLAYERS) return
 
         const entrantIds = entrants.map((p) => p.id)
         const openPrices = openingPrices(entrantIds)
-        const plan = drawRound({ entrantIds, rows })
+        const draw = drawRound({ entrantIds, rows, volatileRows })
 
         set({
           phase: openingPhase(mode),
@@ -246,7 +270,15 @@ export const useGame = create<GameState>()(
           // Day one of a new series is today; the sessions after it are dated
           // forward from here.
           seriesStart: Date.now(),
-          round: emptyRound(0, rows, entrantIds, false, openPrices, plan),
+          round: emptyRound({
+            index: 0,
+            rows,
+            entrantIds,
+            tieBreak: false,
+            openPrices,
+            rowMoves: draw.rowMoves,
+            plan: draw.plan,
+          }),
           runToken: runToken + 1,
         })
       },
@@ -269,22 +301,43 @@ export const useGame = create<GameState>()(
         // In Stock Market everyone resumes from the price they reached; in Black
         // Swan the prices are unused and this is simply a fresh drop.
         const openPrices = Object.fromEntries(field.map((id) => [id, priceAfter(id, round)]))
-        const plan = drawRound({ entrantIds: field, rows })
+        const draw = drawRound({ entrantIds: field, rows, volatileRows: get().volatileRows })
 
         set({
           phase: openingPhase(mode),
           history: [...history, round],
-          round: emptyRound(round.index + 1, rows, field, true, openPrices, plan),
+          round: emptyRound({
+            index: round.index + 1,
+            rows,
+            entrantIds: field,
+            tieBreak: true,
+            openPrices,
+            // Its own conditions: a new day is a new market, and prices already
+            // on the tape are not disturbed by what tomorrow turns out to be.
+            rowMoves: draw.rowMoves,
+            plan: draw.plan,
+          }),
           runToken: runToken + 1,
         })
       },
 
-      recordLanding: (playerId, bin, flips = []) => {
+      recordLanding: (playerId, bin, flips) => {
         const { round } = get()
         if (!round.entrantIds.includes(playerId)) return
         if (round.landings.some((l) => l.playerId === playerId)) return
 
-        const landing = landingFor(playerId, bin, round, round.landings.length, flips)
+        /*
+         * A landing needs the path it took, not just where it stopped, because
+         * rows can be worth different amounts and a price is the sum of the rows
+         * a marble actually crossed. The scene always has the path — it flew it —
+         * so this fills in only for a caller that has a bin and nothing else.
+         *
+         * The stand-in takes its rights first. With every row worth the same that
+         * is exact, since every path to a bin is then worth the same; with rows
+         * differing it is one of the prices that bin could have closed at.
+         */
+        const path = flips?.length ? flips : pathTo(bin, round.rows)
+        const landing = landingFor(playerId, bin, round, round.landings.length, path)
         const scored = { ...round, landings: [...round.landings, landing] }
         set({
           round: scored,
@@ -304,6 +357,7 @@ export const useGame = create<GameState>()(
       partialize: (state) => ({
         mode: state.mode,
         settleRule: state.settleRule,
+        volatileRows: state.volatileRows,
         chartView: state.chartView,
         chartOpen: state.chartOpen,
         rows: state.rows,
@@ -334,7 +388,14 @@ export const useGame = create<GameState>()(
 
         // A persisted round would reference a stale field; always start fresh.
         const entrantIds = activePlayers(state.players).map((p) => p.id)
-        state.round = emptyRound(0, state.rows, entrantIds, false, openingPrices(entrantIds))
+        state.round = emptyRound({
+          index: 0,
+          rows: state.rows,
+          entrantIds,
+          tieBreak: false,
+          openPrices: openingPrices(entrantIds),
+          rowMoves: Array.from({ length: state.rows }, () => BASE_PER_PEG),
+        })
         state.phase = 'setup'
         state.history = []
       },

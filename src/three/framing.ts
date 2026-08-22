@@ -63,7 +63,7 @@ export interface Shot {
  * centre of frame. Solving at z = 0 therefore put the real front edge below the
  * bottom of the screen — which is exactly how it once got cropped.
  */
-export function edgeRise(framedHeight: number, halfFovTan: number, side: 1 | -1, z = 0): number {
+function edgeRise(framedHeight: number, halfFovTan: number, side: 1 | -1, z = 0): number {
   const pitch = (PITCH_DEG * Math.PI) / 180
   const sinP = Math.sin(pitch)
   const cosP = Math.cos(pitch)

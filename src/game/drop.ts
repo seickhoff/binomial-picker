@@ -22,7 +22,7 @@ import {
 } from './geometry'
 
 /** Downward acceleration, in world units per second². */
-export const DROP_GRAVITY = 18
+const DROP_GRAVITY = 18
 /** Upward kick off each peg. */
 const PEG_BOUNCE = 0.9
 /** Rebound off the bin floor. */

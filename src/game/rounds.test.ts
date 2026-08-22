@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { binOf, drawRound } from './rounds'
 import { binomialPmf } from './binomial'
+import { VOLATILITY_LEVELS, BASE_PER_PEG } from './modes'
 
 const SAMPLES = 200_000
 
@@ -18,12 +19,12 @@ function chiSquareLimit(dof: number): number {
   return dof + 5 * Math.sqrt(2 * dof)
 }
 
-function draw(ids: readonly string[], rows: number) {
-  return drawRound({ entrantIds: ids, rows })
+function draw(ids: readonly string[], rows: number, volatileRows = false) {
+  return drawRound({ entrantIds: ids, rows, volatileRows })
 }
 
 describe.each([4, 10, 16, 24])('drawing a round of %i rows', (rows) => {
-  const flips = Array.from({ length: SAMPLES }, () => draw(['p1'], rows).p1)
+  const flips = Array.from({ length: SAMPLES }, () => draw(['p1'], rows).plan.p1)
 
   it('makes every decision a fair coin flip', () => {
     let count = 0
@@ -63,9 +64,35 @@ describe.each([4, 10, 16, 24])('drawing a round of %i rows', (rows) => {
   })
 
   it('gives every entrant exactly one flip per row', () => {
-    const drawn = draw(['a', 'b', 'c'], rows)
-    expect(Object.keys(drawn)).toEqual(['a', 'b', 'c'])
-    for (const sequence of Object.values(drawn)) expect(sequence).toHaveLength(rows)
+    const { plan } = draw(['a', 'b', 'c'], rows)
+    expect(Object.keys(plan)).toEqual(['a', 'b', 'c'])
+    for (const sequence of Object.values(plan)) expect(sequence).toHaveLength(rows)
+  })
+
+  it('moves every row by the plain base when volatility is off', () => {
+    const { rowMoves } = draw(['a', 'b'], rows)
+    expect(rowMoves).toHaveLength(rows)
+    expect(new Set(rowMoves).size).toBe(1)
+    expect(rowMoves[0]).toBe(BASE_PER_PEG)
+  })
+
+  it('adds one of the three levels to each row when volatility is on', () => {
+    const seen = new Set<number>()
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const { rowMoves } = draw(['a', 'b'], rows, true)
+      expect(rowMoves).toHaveLength(rows)
+      for (const step of rowMoves) seen.add(Math.round((step - BASE_PER_PEG) * 100) / 100)
+    }
+    // Only ever one of the three, and over that many rows, all three appear.
+    expect([...seen].sort((a, b) => a - b)).toEqual([...VOLATILITY_LEVELS].sort((a, b) => a - b))
+  })
+
+  it('gives the whole field one market, which is what keeps it fair', () => {
+    // One list of row values per round, not one per player: every player meets
+    // the same row worth the same amount, and only their own coins differ.
+    const { plan, rowMoves } = draw(['a', 'b', 'c'], rows, true)
+    expect(rowMoves).toHaveLength(rows)
+    for (const sequence of Object.values(plan)) expect(sequence).toHaveLength(rowMoves.length)
   })
 
   it('draws each entrant independently', () => {
@@ -75,6 +102,7 @@ describe.each([4, 10, 16, 24])('drawing a round of %i rows', (rows) => {
     drawRound({
       entrantIds: ids,
       rows,
+      volatileRows: false,
       random: () => {
         draws += 1
         return 0.25

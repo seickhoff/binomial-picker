@@ -28,10 +28,6 @@ export function resizeFlashBank(size: number): Float32Array {
   return bank
 }
 
-export function flashBank(): Float32Array {
-  return bank
-}
-
 export function flashPeg(index: number): void {
   if (index < 0) return
   // The bank is sized by the board, which may not have mounted yet; a strike is

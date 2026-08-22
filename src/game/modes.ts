@@ -11,15 +11,57 @@ import type { Mode } from './types'
 export const START_PRICE = 100
 
 /**
- * Dollars between neighbouring finishing slots.
+ * The move at every decision, before volatility: half a slot per peg.
  *
- * A peg is worth *half* a slot, which is not a fudge: stepping one slot further
- * right means one more right deflection and one fewer left one, so a slot is
- * always two pegs' worth of movement. Pricing the slot at $1 therefore prices
- * the peg at 50¢.
+ * Stepping one slot further right means one more right deflection and one fewer
+ * left one, so a slot is two pegs — and a slot is a dollar.
  */
-export const DOLLARS_PER_SLOT = 1
-export const DOLLARS_PER_PEG = DOLLARS_PER_SLOT / 2
+export const BASE_PER_PEG = 0.5
+const DOLLARS_PER_SLOT = BASE_PER_PEG * 2
+
+/**
+ * What volatility adds to a row's move, in dollars: cents on top of the base.
+ *
+ * A row is drawn one of these when volatility is on, and every player crossing
+ * that row wears it — added going right, subtracted going left, so the row is
+ * simply worth a little more than half a slot. 51¢, 55¢ or 60¢ a peg.
+ *
+ * Cents rather than dollars because that leaves the shape of the game alone. The
+ * dollars still come from the lattice, so a slot is still a dollar and the ladder
+ * under the bins still means something; what the volatility decides is the small
+ * change, which is exactly where a real tape carries its noise. It also puts the
+ * three levels an order of magnitude apart, so a wild row is worth ten calm ones
+ * and a session has a story.
+ *
+ * Shared per row is what keeps it fair: every player meets the same row worth the
+ * same amount, with their own fair coin against it.
+ */
+export const ROW_VOLATILITY = {
+  calm: 0.01,
+  mid: 0.05,
+  wild: 0.1,
+} as const
+
+export const VOLATILITY_LEVELS = [
+  ROW_VOLATILITY.calm,
+  ROW_VOLATILITY.mid,
+  ROW_VOLATILITY.wild,
+] as const
+
+/*
+ * Prices are added up in whole cents, then converted once.
+ *
+ * Not fussiness. Volatility moves a price by five hundredths of a dollar, and
+ * neither 0.05 nor 0.1 is exact in binary, so adding them in dollars leaves
+ * $100.30 as 100.29999999999998 — and worse, leaves it as a *different*
+ * 100.2999…8 depending on the order the rows came in. Ties are decided by
+ * comparing closing prices for equality, so two players who really did finish
+ * level would have been scored as separated by a millionth of a cent.
+ *
+ * Integers add exactly, and equal totals convert to the identical double.
+ */
+const cents = (dollars: number) => Math.round(dollars * 100)
+const dollars = (whole: number) => whole / 100
 
 export interface ModeInfo {
   readonly id: Mode
@@ -49,7 +91,7 @@ export const MODES: Record<Mode, ModeInfo> = {
   stock: {
     id: 'stock',
     name: 'Stock Market',
-    tagline: `Every player opens at $${START_PRICE}. Slots are a dollar apart — each peg moves 50¢.`,
+    tagline: `Every player opens at $${START_PRICE}. Highest close wins the session.`,
     rule: 'Highest close wins',
     tieBreakName: 'After hours',
     tieBreakUnit: 'session',
@@ -60,24 +102,27 @@ export const MODES: Record<Mode, ModeInfo> = {
 export const MODE_ORDER: readonly Mode[] = ['blackSwan', 'stock']
 
 /**
- * Net dollar move for a landing. The centre slot is unchanged, and each slot
- * out from there is another dollar — up to the right, down to the left.
+ * Slots right of centre, which is position rather than money.
+ *
+ * The one thing a landing still says on its own once rows are worth different
+ * amounts: a bin is a position, and only a position.
  */
-export function netMove(bin: number, rows: number): number {
-  return (bin - rows / 2) * DOLLARS_PER_SLOT
+export function slotOffset(bin: number, rows: number): number {
+  return bin - rows / 2
 }
 
-/** Closing price for a landing, given where the stock opened. */
-export function closingPrice(bin: number, rows: number, openPrice: number): number {
-  return openPrice + netMove(bin, rows)
-}
-
-/**
- * Price part-way down, from the running total of ±1 deflections. Lands on
- * exactly `closingPrice` once every row has been resolved.
- */
-export function priceAfterSteps(openPrice: number, netSteps: number): number {
-  return openPrice + netSteps * DOLLARS_PER_PEG
+/** Closing price for a path: the open, plus each row it crossed. */
+export function closeOf(
+  flips: readonly number[],
+  openPrice: number,
+  rowMoves: readonly number[],
+): number {
+  return dollars(
+    flips.reduce(
+      (price, flip, row) => price + flip * cents(rowMoves[row] ?? BASE_PER_PEG),
+      cents(openPrice),
+    ),
+  )
 }
 
 /**
@@ -85,25 +130,78 @@ export function priceAfterSteps(openPrice: number, netSteps: number): number {
  * Market, and slots from the centre in Black Swan, which is the same series
  * measured in the units that mode cares about.
  */
-export function walkOf(flips: readonly number[], openPrice: number, mode: Mode): number[] {
+export function walkOf(
+  flips: readonly number[],
+  openPrice: number,
+  mode: Mode,
+  rowMoves: readonly number[],
+): number[] {
   const walk = [mode === 'stock' ? openPrice : 0]
+  let price = cents(openPrice)
   let steps = 0
-  for (const flip of flips) {
+
+  flips.forEach((flip, row) => {
+    price += flip * cents(rowMoves[row] ?? BASE_PER_PEG)
     steps += flip
-    walk.push(mode === 'stock' ? priceAfterSteps(openPrice, steps) : steps * DOLLARS_PER_PEG)
-  }
+    // Black Swan has no prices: its walk is slots from the centre, half a slot
+    // per peg, and no volatility applies to it.
+    walk.push(mode === 'stock' ? dollars(price) : steps / 2)
+  })
   return walk
 }
 
-/** Lowest and highest price reachable in a round — the axis range. */
-export function priceRange(rows: number, openPrice: number): [number, number] {
-  const reach = (rows / 2) * DOLLARS_PER_SLOT
-  return [openPrice - reach, openPrice + reach]
+/**
+ * Lowest and highest price a round can reach — the axis range.
+ *
+ * Every row going one way, which with rows of different sizes is still just their
+ * sum: the extremes are the same whatever order the market moves in.
+ */
+export function priceRange(openPrice: number, rowMoves: readonly number[]): [number, number] {
+  const reach = rowMoves.reduce((total, step) => total + cents(step), 0)
+  return [dollars(cents(openPrice) - reach), dollars(cents(openPrice) + reach)]
 }
 
-/** Whole dollars stay whole; a half-dollar shows its cents. */
+/**
+ * What to write under a finishing slot.
+ *
+ * Lives here, beside the pricing, because both the ladder in the scene and the
+ * distribution chart in the panels need exactly this decision, and those two
+ * layers never import from one another.
+ *
+ * The slot's own worth, from the lattice: a dollar a slot, whatever the market is
+ * doing. Volatility moves a marble's close by cents around this, so two marbles
+ * in one bin can be a few cents apart — their own tags and the table carry that,
+ * and the ladder stays the plain statement of what a position pays.
+ */
+export function slotLabel({
+  mode,
+  bin,
+  rows,
+  openPrice,
+}: {
+  mode: Mode
+  bin: number
+  rows: number
+  openPrice: number | null
+}): string {
+  if (mode !== 'stock') return String(bin)
+
+  const move = dollars(slotOffset(bin, rows) * cents(DOLLARS_PER_SLOT))
+  return openPrice === null
+    ? formatMove(move)
+    : formatPrice(dollars(cents(openPrice) + cents(move)))
+}
+
+/**
+ * A price, always to the cent.
+ *
+ * Never trimmed to whole dollars, even when it is one. Rows move the price by a
+ * penny or two, so a column of closes reading $100, $100.07, $99.98, $100 is a
+ * column that looks broken — and a quote board that drops the cents is not a
+ * quote board.
+ */
 export function formatPrice(price: number): string {
-  return `$${Number.isInteger(price) ? price.toFixed(0) : price.toFixed(2)}`
+  return `$${price.toFixed(2)}`
 }
 
 /**
@@ -141,16 +239,15 @@ export function totalTrendOf(price: number): 'up' | 'down' | 'flat' {
  * A slot's move rather than its price, for when players opened at different
  * prices and no single price axis can describe a slot.
  */
-export function formatMove(move: number): string {
-  if (move === 0) return '$0'
-  return `${move > 0 ? '+' : '−'}$${Math.abs(move)}`
+function formatMove(move: number): string {
+  if (move === 0) return '$0.00'
+  return `${move > 0 ? '+' : '−'}$${Math.abs(move).toFixed(2)}`
 }
 
 export function formatChange(change: number): string {
   const arrow = change > 0 ? '▲' : change < 0 ? '▼' : '■'
   const sign = change > 0 ? '+' : change < 0 ? '−' : ''
-  const size = Math.abs(change)
-  return `${arrow} ${sign}${Number.isInteger(size) ? size.toFixed(0) : size.toFixed(2)}`
+  return `${arrow} ${sign}${Math.abs(change).toFixed(2)}`
 }
 
 /** Direction of a move, for status colouring. Never the only cue. */

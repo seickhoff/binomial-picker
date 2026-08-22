@@ -7,7 +7,7 @@
  */
 
 /** Row `n` of Pascal's triangle: the C(n, k) weights for k = 0…n. */
-export function pascalRow(n: number): number[] {
+function pascalRow(n: number): number[] {
   let row = [1]
   for (let i = 0; i < n; i++) {
     const next: number[] = [1]
@@ -36,16 +36,8 @@ export function deviation(bin: number, rows: number): number {
 }
 
 /** "1 in N" odds for a probability. */
-export function oneInN(probability: number): number {
+function oneInN(probability: number): number {
   return probability > 0 ? 1 / probability : Infinity
-}
-
-/**
- * Rarity in bits: -log2(p). Higher is rarer. Used for display only — ranking
- * compares probabilities directly.
- */
-export function rarityBits(probability: number): number {
-  return probability > 0 ? -Math.log2(probability) : Infinity
 }
 
 export function formatOdds(probability: number): string {

@@ -32,7 +32,7 @@ export const FLOOR_THICKNESS = 0.6
  * Half-width of the funnel throat, level with the apex peg. Narrow enough that
  * marbles enter the lattice near the top, wide enough for two abreast.
  */
-export const THROAT_HALF_WIDTH = 0.85
+const THROAT_HALF_WIDTH = 0.85
 
 export const MIN_ROWS = 4
 /**

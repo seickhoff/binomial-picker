@@ -1,65 +1,176 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ROW_VOLATILITY,
   START_PRICE,
-  closingPrice,
+  BASE_PER_PEG,
+  closeOf,
   formatPrice,
-  netMove,
-  priceAfterSteps,
   priceRange,
+  slotLabel,
+  slotOffset,
   trendOf,
+  walkOf,
 } from './modes'
 import { loadGame } from './testing'
 
-describe('stock price arithmetic', () => {
-  it('puts neighbouring slots exactly a dollar apart', () => {
-    const rows = 10
+/** Flips that land in `bin` over `rows`: the rights first, then the lefts. */
+const pathTo = (bin: number, rows: number) =>
+  Array.from({ length: rows }, (_, row) => (row < bin ? 1 : -1))
+
+/** Every row worth the same, the way the game prices things with volatility off. */
+const steady = (rows: number) => Array.from({ length: rows }, () => BASE_PER_PEG)
+
+/**
+ * What a landing in `bin` closes at on a steady market.
+ *
+ * Stated as the relationship rather than a figure, deliberately: the scale of a
+ * row has changed twice now, and every test that spelled its answer out in
+ * dollars had to be recomputed by hand each time. This has to be rewritten only
+ * if the rule changes — two pegs to a slot, one row's worth per peg.
+ */
+const closeAt = (bin: number, rows: number, openPrice = START_PRICE) =>
+  // In cents, like the game does it: adding nickels in floating point drifts, and
+  // a test that drifts differently from the code it checks proves nothing.
+  (Math.round(openPrice * 100) + (2 * bin - rows) * Math.round(BASE_PER_PEG * 100)) / 100
+
+describe('stock price arithmetic, with every row worth the same', () => {
+  const rows = 10
+  const flat = steady(rows)
+
+  it('puts neighbouring slots exactly two pegs apart', () => {
     for (let bin = 1; bin <= rows; bin++) {
-      const step = closingPrice(bin, rows, START_PRICE) - closingPrice(bin - 1, rows, START_PRICE)
-      expect(step).toBe(1)
+      const step =
+        closeOf(pathTo(bin, rows), START_PRICE, flat) -
+        closeOf(pathTo(bin - 1, rows), START_PRICE, flat)
+      expect(step).toBeCloseTo(2 * BASE_PER_PEG, 10)
     }
   })
 
-  it('measures the move from the centre slot', () => {
-    expect(netMove(10, 10)).toBe(5)
-    expect(netMove(0, 10)).toBe(-5)
-    expect(netMove(5, 10)).toBe(0)
-    expect(netMove(6, 10)).toBe(1)
+  it('measures position from the centre slot', () => {
+    expect(slotOffset(10, 10)).toBe(5)
+    expect(slotOffset(0, 10)).toBe(-5)
+    expect(slotOffset(5, 10)).toBe(0)
+    expect(slotOffset(6, 10)).toBe(1)
   })
 
   it('closes at the open plus the net move', () => {
-    expect(closingPrice(10, 10, START_PRICE)).toBe(105)
-    expect(closingPrice(0, 10, START_PRICE)).toBe(95)
-    expect(closingPrice(5, 10, START_PRICE)).toBe(100)
+    expect(closeOf(pathTo(10, rows), START_PRICE, flat)).toBeCloseTo(closeAt(10, rows), 10)
+    expect(closeOf(pathTo(0, rows), START_PRICE, flat)).toBeCloseTo(closeAt(0, rows), 10)
+    // Half and half is the open, exactly.
+    expect(closeOf(pathTo(5, rows), START_PRICE, flat)).toBeCloseTo(START_PRICE, 10)
     // Carrying a price forward from a previous session.
-    expect(closingPrice(7, 10, 104)).toBe(106)
+    expect(closeOf(pathTo(7, rows), 104, flat)).toBeCloseTo(closeAt(7, rows, 104), 10)
   })
 
-  it('moves half a slot per peg, arriving at the close', () => {
-    // Six rights and four lefts over ten rows: net +2 steps, so +$1.
-    expect(priceAfterSteps(START_PRICE, 2)).toBe(101)
-    expect(priceAfterSteps(START_PRICE, -2)).toBe(99)
-    // A single peg is 50 cents, and half-dollars are real prices mid-flight.
-    expect(priceAfterSteps(START_PRICE, 1)).toBe(100.5)
-    expect(formatPrice(priceAfterSteps(START_PRICE, 1))).toBe('$100.50')
-    expect(formatPrice(START_PRICE)).toBe('$100')
-    // Whatever the flips, the running total lands on the closing price.
-    const rows = 10
+  it('moves the row it is crossing per peg, arriving at the close', () => {
+    const walk = walkOf(pathTo(6, rows), START_PRICE, 'stock', flat)
+    expect(walk[0]).toBe(START_PRICE)
+    expect(walk[1]).toBeCloseTo(START_PRICE + BASE_PER_PEG, 10)
+    // A quote board always shows the cents, even on a round number.
+    expect(formatPrice(START_PRICE)).toBe('$100.00')
+    // The walk ends exactly where the close says it does.
     for (let bin = 0; bin <= rows; bin++) {
-      expect(priceAfterSteps(START_PRICE, 2 * bin - rows)).toBe(
-        closingPrice(bin, rows, START_PRICE),
-      )
+      const path = pathTo(bin, rows)
+      const steps = walkOf(path, START_PRICE, 'stock', flat)
+      expect(steps).toHaveLength(rows + 1)
+      expect(steps[steps.length - 1]).toBe(closeOf(path, START_PRICE, flat))
     }
   })
 
-  it('bounds the round by the row count', () => {
-    expect(priceRange(10, START_PRICE)).toEqual([95, 105])
-    expect(priceRange(16, 120)).toEqual([112, 128])
+  it('bounds the round by the rows it has to cross', () => {
+    const [low, high] = priceRange(START_PRICE, flat)
+    expect(low).toBeCloseTo(START_PRICE - rows * BASE_PER_PEG, 10)
+    expect(high).toBeCloseTo(START_PRICE + rows * BASE_PER_PEG, 10)
+    // Every row one way is the widest it goes, whatever the open.
+    expect(priceRange(120, steady(16))[1]).toBeCloseTo(120 + 16 * BASE_PER_PEG, 10)
+  })
+
+  it('prices a slot from the lattice, a dollar at a time', () => {
+    const label = (bin: number) => slotLabel({ mode: 'stock', bin, rows, openPrice: START_PRICE })
+    expect(label(10)).toBe(formatPrice(closeAt(10, rows)))
+    expect(label(5)).toBe(formatPrice(START_PRICE))
+    // No shared open, so a slot can only be a move.
+    expect(slotLabel({ mode: 'stock', bin: 10, rows, openPrice: null })).toBe(
+      `+$${(rows * BASE_PER_PEG).toFixed(2)}`,
+    )
   })
 
   it('reads direction for colouring', () => {
     expect(trendOf(3)).toBe('up')
     expect(trendOf(-3)).toBe('down')
     expect(trendOf(0)).toBe('flat')
+  })
+})
+
+describe('stock price arithmetic, with volatility on top of the base', () => {
+  const rows = 4
+  // A quiet start, then the day gets away from everyone.
+  const market = [
+    BASE_PER_PEG + ROW_VOLATILITY.calm,
+    BASE_PER_PEG + ROW_VOLATILITY.mid,
+    BASE_PER_PEG + ROW_VOLATILITY.wild,
+    BASE_PER_PEG + ROW_VOLATILITY.calm,
+  ]
+
+  it('adds the drawn cents to the base move, in the direction taken', () => {
+    // All four rows right: four base moves, plus what each row drew.
+    const total = market.reduce((sum, step) => sum + step, 0)
+    expect(closeOf([1, 1, 1, 1], START_PRICE, market)).toBeCloseTo(START_PRICE + total, 10)
+    expect(closeOf([-1, -1, -1, -1], START_PRICE, market)).toBeCloseTo(START_PRICE - total, 10)
+    // The dollars are still the lattice's: four pegs is two slots, two dollars.
+    expect(closeOf([1, 1, 1, 1], START_PRICE, market) - START_PRICE).toBeGreaterThan(2)
+    expect(closeOf([1, 1, 1, 1], START_PRICE, market) - START_PRICE).toBeLessThan(2.5)
+  })
+
+  it('closes two marbles in the same bin a few cents apart', () => {
+    // Both end level — two rows each way — but only one caught the wild row going
+    // the right way. This is the whole difference the setting makes.
+    const caughtIt = closeOf([1, -1, 1, -1], START_PRICE, market)
+    const missedIt = closeOf([-1, 1, -1, 1], START_PRICE, market)
+
+    expect(caughtIt).toBeGreaterThan(missedIt)
+    // Cents apart, not dollars: the base cancels out for a level marble.
+    expect(caughtIt).toBeCloseTo(START_PRICE + (ROW_VOLATILITY.wild - ROW_VOLATILITY.mid), 10)
+    expect(missedIt).toBeCloseTo(START_PRICE - (ROW_VOLATILITY.wild - ROW_VOLATILITY.mid), 10)
+    expect(caughtIt - missedIt).toBeLessThan(0.25)
+  })
+
+  it('still prices the slots in whole dollars, since the lattice has not changed', () => {
+    const label = (bin: number) => slotLabel({ mode: 'stock', bin, rows, openPrice: START_PRICE })
+    // A slot is a dollar whatever the market did; the cents are the marble's own.
+    expect(label(4)).toBe('$102.00')
+    expect(label(2)).toBe('$100.00')
+    expect(label(0)).toBe('$98.00')
+  })
+
+  it('gives every player the same distribution of closes', () => {
+    /*
+     * The fairness of the whole idea, stated as a sum: a player's close depends
+     * only on their own flips against row values everyone shares. So the set of
+     * closes reachable is identical for everyone, and so are their chances.
+     */
+    const paths = [
+      [1, 1, -1, -1],
+      [-1, -1, 1, 1],
+      [1, -1, -1, 1],
+    ]
+    for (const path of paths) {
+      const mirrored = path.map((flip) => -flip)
+      expect(closeOf(path, START_PRICE, market) - START_PRICE).toBe(
+        START_PRICE - closeOf(mirrored, START_PRICE, market),
+      )
+    }
+  })
+
+  it('bounds the round by the sum of its rows, in any order', () => {
+    const shuffled = [market[2], market[0], market[3], market[1]]
+    expect(priceRange(START_PRICE, shuffled)).toEqual(priceRange(START_PRICE, market))
+  })
+
+  it('leaves Black Swan measured in slots, whatever the market did', () => {
+    const walk = walkOf([1, 1, -1, -1], 0, 'blackSwan', market)
+    // Half a slot per peg, and no dollar anywhere near it.
+    expect(walk).toEqual([0, 0.5, 1, 0.5, 0])
   })
 })
 
@@ -70,6 +181,9 @@ describe('scoring differs by mode', () => {
   async function playRound(mode: 'stock' | 'blackSwan') {
     const { useGame, winnersOf, rankRound } = await loadGame()
     useGame.getState().setMode(mode)
+    // The dollar figures here are the point of the comparison, so the market is
+    // held at one price per row.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     const ids = useGame.getState().round.entrantIds
     ids.forEach((id, i) => useGame.getState().recordLanding(id, BINS[i]))
@@ -112,8 +226,8 @@ describe('scoring differs by mode', () => {
     const { round, players, rankRound } = await playRound('stock')
     const top = rankRound(round, players, 'stock')[0]
     expect(top.openPrice).toBe(START_PRICE)
-    expect(top.closePrice).toBe(103)
-    expect(top.change).toBe(3)
+    expect(top.closePrice).toBe(closeAt(8, round.rows))
+    expect(top.change).toBe(closeAt(8, round.rows) - START_PRICE)
   })
 })
 
@@ -121,6 +235,8 @@ describe('stock ties carry the price forward', () => {
   it('reopens the tied players at the price they reached', async () => {
     const { useGame, winnersOf } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
 
     // Two players tie at $102, the others fall behind.
@@ -137,10 +253,11 @@ describe('stock ties carry the price forward', () => {
     // The whole field trades on, not just the two who tied.
     expect(next.entrantIds).toEqual(ids)
     // Everyone resumes from the price they reached, not from $100.
-    expect(next.openPrices[ids[0]]).toBe(102)
-    expect(next.openPrices[ids[1]]).toBe(102)
-    expect(next.openPrices[ids[2]]).toBe(98)
-    expect(next.openPrices[ids[3]]).toBe(99)
+    const rows = next.rows
+    expect(next.openPrices[ids[0]]).toBe(closeAt(7, rows))
+    expect(next.openPrices[ids[1]]).toBe(closeAt(7, rows))
+    expect(next.openPrices[ids[2]]).toBe(closeAt(3, rows))
+    expect(next.openPrices[ids[3]]).toBe(closeAt(4, rows))
 
     // The next day opens on its placard, and the marbles are held until it is
     // done with.
@@ -152,6 +269,8 @@ describe('stock ties carry the price forward', () => {
   it('has no shared price axis once the field is spread out', async () => {
     const { useGame, commonOpenPrice } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     const ids = useGame.getState().round.entrantIds
 
@@ -167,6 +286,8 @@ describe('stock ties carry the price forward', () => {
   it('lets a trailing stock win the after-hours session', async () => {
     const { useGame, rankRound, winnersOf } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     const ids = useGame.getState().round.entrantIds
     ;[7, 7, 3, 4].forEach((bin, i) => useGame.getState().recordLanding(ids[i], bin))
@@ -182,29 +303,37 @@ describe('stock ties carry the price forward', () => {
     const winners = winnersOf(round, 'stock')
     expect(winners).toHaveLength(1)
     expect(winners[0].playerId).toBe(ids[2])
-    expect(rankRound(round, players, 'stock')[0].closePrice).toBe(103)
+    // Opened lowest, then took ten of ten rows to the right.
+    expect(rankRound(round, players, 'stock')[0].closePrice).toBe(
+      closeAt(10, round.rows, closeAt(3, round.rows)),
+    )
   })
 
   it('settles the second session from the carried price', async () => {
     const { useGame, rankRound } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     const ids = useGame.getState().round.entrantIds
     ;[7, 7, 3, 4].forEach((bin, i) => useGame.getState().recordLanding(ids[i], bin))
     useGame.getState().startTieBreak()
 
     const field = useGame.getState().round.entrantIds
-    useGame.getState().recordLanding(field[0], 8) // 102 + 3
-    useGame.getState().recordLanding(field[1], 4) // 102 - 1
-    useGame.getState().recordLanding(field[2], 5) //  98 + 0
-    useGame.getState().recordLanding(field[3], 5) //  99 + 0
+    const rows = useGame.getState().round.rows
+    // Carried in at the close of bins 7, 7, 3, 4, then this session's bins.
+    useGame.getState().recordLanding(field[0], 8)
+    useGame.getState().recordLanding(field[1], 4)
+    useGame.getState().recordLanding(field[2], 5)
+    useGame.getState().recordLanding(field[3], 5)
 
     const { round, players } = useGame.getState()
     const ranked = rankRound(round, players, 'stock')
     expect(useGame.getState().phase).toBe('results')
-    expect(ranked[0].closePrice).toBe(105)
-    expect(ranked[0].openPrice).toBe(102)
-    expect(ranked[1].closePrice).toBe(101)
+    expect(ranked[0].openPrice).toBe(closeAt(7, rows))
+    expect(ranked[0].closePrice).toBe(closeAt(8, rows, closeAt(7, rows)))
+    // Second place opened level with the leader and gave a slot back.
+    expect(ranked[1].closePrice).toBe(closeAt(4, rows, closeAt(7, rows)))
   })
 })
 
@@ -331,6 +460,8 @@ describe('settling both ends', () => {
   it('keeps going until both ends separate', async () => {
     const { useGame, settlementOf } = await loadGame()
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().setSettleRule('winnerAndLoser')
     useGame.getState().start()
 
@@ -360,29 +491,31 @@ describe('the walk behind a landing', () => {
     // closes at +$1 — a 6–4 split is not break-even, because a peg is half a
     // slot and the net is +2 steps.
     const flips = [1, 1, 1, 1, 1, 1, -1, -1, -1, -1]
-    const walk = walkOf(flips, START_PRICE, 'stock')
+    const walk = walkOf(flips, START_PRICE, 'stock', steady(flips.length))
 
     expect(walk).toHaveLength(flips.length + 1)
     expect(walk[0]).toBe(START_PRICE)
-    expect(Math.max(...walk)).toBe(103)
-    expect(walk[walk.length - 1]).toBe(101)
+    // Peaks after the run of rights, then gives some back: a 6–4 split is not
+    // break-even, since the net is +2 pegs.
+    expect(Math.max(...walk)).toBe(START_PRICE + 6 * BASE_PER_PEG)
+    expect(walk[walk.length - 1]).toBe(closeAt(6, flips.length))
 
     // Five and five is the flat case.
-    const even = walkOf([1, 1, 1, 1, 1, -1, -1, -1, -1, -1], START_PRICE, 'stock')
+    const even = walkOf([1, 1, 1, 1, 1, -1, -1, -1, -1, -1], START_PRICE, 'stock', steady(10))
     expect(even[even.length - 1]).toBe(START_PRICE)
   })
 
   it('moves half a slot per row, never a whole one', async () => {
     const { walkOf } = await import('./modes')
-    const walk = walkOf([1, 1, -1, 1], START_PRICE, 'stock')
+    const walk = walkOf([1, 1, -1, 1], START_PRICE, 'stock', steady(4))
     for (let i = 1; i < walk.length; i++) {
-      expect(Math.abs(walk[i] - walk[i - 1])).toBeCloseTo(0.5, 10)
+      expect(Math.abs(walk[i] - walk[i - 1])).toBeCloseTo(BASE_PER_PEG, 10)
     }
   })
 
   it('measures slots from the centre in Black Swan', async () => {
     const { walkOf } = await import('./modes')
-    const walk = walkOf([1, 1, 1, 1], START_PRICE, 'blackSwan')
+    const walk = walkOf([1, 1, 1, 1], START_PRICE, 'blackSwan', steady(4))
     // Four rights is two slots right of centre, and the open is zero.
     expect(walk[0]).toBe(0)
     expect(walk[walk.length - 1]).toBe(2)
@@ -390,8 +523,10 @@ describe('the walk behind a landing', () => {
 
   it('ends where the landing says it did', async () => {
     const { useGame, rankRound } = await loadGame()
-    const { walkOf, closingPrice } = await import('./modes')
+    const { walkOf, closeOf } = await import('./modes')
     useGame.getState().setMode('stock')
+    // Dollar figures below assume every row is worth the same.
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
 
     const ids = useGame.getState().round.entrantIds
@@ -401,8 +536,8 @@ describe('the walk behind a landing', () => {
 
     const { round, players } = useGame.getState()
     const [top] = rankRound(round, players, 'stock')
-    const walk = walkOf(top.landing.flips, top.openPrice, 'stock')
-    expect(walk[walk.length - 1]).toBe(closingPrice(8, round.rows, top.openPrice))
+    const walk = walkOf(top.landing.flips, top.openPrice, 'stock', round.rowMoves)
+    expect(walk[walk.length - 1]).toBe(closeOf(top.landing.flips, top.openPrice, round.rowMoves))
     expect(walk[walk.length - 1]).toBe(top.closePrice)
   })
 })
