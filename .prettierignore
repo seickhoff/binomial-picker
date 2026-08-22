@@ -1,0 +1,4 @@
+dist
+node_modules
+# Generated, enormous, and not ours to reformat.
+package-lock.json
