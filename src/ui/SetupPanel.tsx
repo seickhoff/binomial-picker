@@ -5,7 +5,13 @@ import { MODES, MODE_ORDER } from '../game/modes'
 import { MAX_PLAYERS, MIN_PLAYERS, colorForSlot } from '../game/palette'
 import { useGame } from '../game/store'
 import { PlayerDot } from './PlayerTag'
-import { rowsSummary, settleRuleHint, tickerSymbols } from './presenters'
+import {
+  autoSessionsHint,
+  autoSessionsLabel,
+  rowsSummary,
+  settleRuleHint,
+  tickerSymbols,
+} from './presenters'
 
 export function SetupPanel() {
   const rows = useGame((s) => s.rows)
@@ -183,24 +189,15 @@ export function SetupPanel() {
           </button>
         </div>
         <p className="hint">{settleRuleHint(settleRule)}</p>
-        {/* Only Stock Market has dated sessions to run through. */}
-        {mode === 'stock' && (
-          <>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={autoSessions}
-                onChange={(e) => setAutoSessions(e.target.checked)}
-              />
-              Run the days automatically
-            </label>
-            <p className="hint">
-              {autoSessions
-                ? 'Each day opens on its own placard, and an unsettled close rolls into tomorrow by itself.'
-                : 'Each day opens on its own placard. An unsettled close waits for you.'}
-            </p>
-          </>
-        )}
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={autoSessions}
+            onChange={(e) => setAutoSessions(e.target.checked)}
+          />
+          {autoSessionsLabel(mode)}
+        </label>
+        <p className="hint">{autoSessionsHint(mode, autoSessions)}</p>
       </section>
 
       <section className="panel-section">

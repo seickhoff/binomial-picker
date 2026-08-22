@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { settlementOf } from '../game/scoring'
 import { useGame } from '../game/store'
+import type { Phase } from '../game/types'
 
 /**
  * Runs a series by itself.
@@ -16,6 +17,18 @@ import { useGame } from '../game/store'
 const PLACARD_MS = 2400
 /** Summary time, before the next session opens itself. */
 const SUMMARY_MS = 5200
+
+/**
+ * Whether another session should open on its own.
+ *
+ * Both modes, and not because it is tidier: a game that needs three rounds to
+ * separate two players needs them in Black Swan exactly as much as in Stock
+ * Market, and clicking through is the same chore either way. What differs is only
+ * the dressing — Stock Market announces a new day, Black Swan simply drops again.
+ */
+export function wantsNextSession(phase: Phase, settled: boolean, autoSessions: boolean): boolean {
+  return autoSessions && !settled && phase === 'results'
+}
 
 export function useSessionFlow(): void {
   const phase = useGame((s) => s.phase)
@@ -34,14 +47,12 @@ export function useSessionFlow(): void {
     // `runToken` restarts the wait for each session, not just the first.
   }, [phase, runToken, release])
 
-  // Stock Market only, like the placards: Black Swan's tie-break is sudden
-  // death rather than another day's trading, and it stays a deliberate press.
-  const unsettled =
-    phase === 'results' && mode === 'stock' && !settlementOf(round, mode, settleRule).settled
+  const { settled } = settlementOf(round, mode, settleRule)
+  const opening = wantsNextSession(phase, settled, autoSessions)
 
   useEffect(() => {
-    if (!autoSessions || !unsettled) return
+    if (!opening) return
     const timer = window.setTimeout(startTieBreak, SUMMARY_MS)
     return () => window.clearTimeout(timer)
-  }, [autoSessions, unsettled, runToken, startTieBreak])
+  }, [opening, runToken, startTieBreak])
 }

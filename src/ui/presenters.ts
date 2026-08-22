@@ -137,6 +137,29 @@ export function autoSessionHint(mode: Mode): string {
 }
 
 /**
+ * The setting that runs a series unattended.
+ *
+ * Both modes have it, since clicking through re-drops is the same chore either
+ * way, but they are not doing the same thing: Stock Market is running a calendar
+ * of trading days, Black Swan is simply dropping again until the field comes
+ * apart. The wording follows whichever it is.
+ */
+export function autoSessionsLabel(mode: Mode): string {
+  return mode === 'stock' ? 'Run the days automatically' : 'Re-drop automatically'
+}
+
+export function autoSessionsHint(mode: Mode, on: boolean): string {
+  if (mode === 'stock') {
+    return on
+      ? 'Each day opens on its own placard, and an unsettled close rolls into tomorrow by itself.'
+      : 'Each day opens on its own placard. An unsettled close waits for you.'
+  }
+  return on
+    ? `A level round goes to ${MODES.blackSwan.tieBreakName.toLowerCase()} by itself, and keeps going until the field comes apart.`
+    : `A level round waits for you to send it to ${MODES.blackSwan.tieBreakName.toLowerCase()}.`
+}
+
+/**
  * Show every Nth bin label on the chart's axis. Prices are far wider than bin
  * numbers, so they need thinning sooner.
  */

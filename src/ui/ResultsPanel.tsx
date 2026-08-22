@@ -227,9 +227,7 @@ export function ResultsPanel() {
 
       {/* Says so, rather than letting the screen change on its own and look like
           it took the decision away. */}
-      {!settled && autoSessions && mode === 'stock' && (
-        <p className="hint">{autoSessionHint(mode)}</p>
-      )}
+      {!settled && autoSessions && <p className="hint">{autoSessionHint(mode)}</p>}
     </section>
   )
 }
