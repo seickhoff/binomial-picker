@@ -13,6 +13,7 @@ import { useDraggable } from './useDraggable'
 import {
   autoSessionHint,
   bottomKicker,
+  lineLabels,
   heroFigure,
   rematchLabel,
   resultsTableCaption,
@@ -151,7 +152,7 @@ export function ResultsPanel() {
             sessions={sessions}
             mode={mode}
             openPrice={seriesOpenPrice}
-            symbols={symbols}
+            labels={lineLabels(mode, players)}
           />
         ) : (
           <DistributionChart

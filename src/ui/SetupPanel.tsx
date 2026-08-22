@@ -142,9 +142,14 @@ export function SetupPanel() {
                   // would slide the row away from the cursor mid-word.
                   onBlur={sortRoster}
                 />
-                <span className="player-symbol" title={`Ticker symbol for ${player.name}`}>
-                  {symbols.get(player.id)}
-                </span>
+                {/* A ticker symbol is a Stock Market idea. Black Swan has no
+                    tape, no quotes and no symbol column in its results, so one
+                    here was the only place it leaked in. */}
+                {mode === 'stock' && (
+                  <span className="player-symbol" title={`Ticker symbol for ${player.name}`}>
+                    {symbols.get(player.id)}
+                  </span>
+                )}
                 <button
                   type="button"
                   className="btn btn-icon"

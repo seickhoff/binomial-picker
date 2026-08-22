@@ -23,15 +23,15 @@ export interface MoveLinesProps {
   mode: Mode
   /** Shared opening price, or null when players opened at different prices. */
   openPrice: number | null
-  /** Ticker symbol per player id, used to label each line's end. */
-  symbols: ReadonlyMap<string, string>
+  /** What to write at each line's end, per player id. See `lineLabels`. */
+  labels: ReadonlyMap<string, string>
 }
 
 const PAD = { top: 14, right: 62, bottom: 22, left: 44 }
 const PLOT_H = 190
 const WIDTH = 560
 
-export function MoveLines({ entries, sessions, mode, openPrice, symbols }: MoveLinesProps) {
+export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLinesProps) {
   const [hovered, setHovered] = useState<string | null>(null)
 
   const walks = useMemo(() => {
@@ -128,8 +128,8 @@ export function MoveLines({ entries, sessions, mode, openPrice, symbols }: MoveL
             )
           })}
 
-          {/* Each line labelled where it ends, with the symbol it trades under —
-              so a line is identified by name, not only by colour. */}
+          {/* Each line labelled where it ends — so a line is identified by more
+              than its colour. */}
           {walks.map(({ entry, values }) => {
             const endY = y(values[values.length - 1])
             const dimmed = hovered !== null && hovered !== entry.player.id
@@ -142,7 +142,7 @@ export function MoveLines({ entries, sessions, mode, openPrice, symbols }: MoveL
                 fill={colorForSlot(entry.player.slot).hex}
                 opacity={dimmed ? 0.25 : 1}
               >
-                {symbols.get(entry.player.id)}
+                {labels.get(entry.player.id)}
               </text>
             )
           })}

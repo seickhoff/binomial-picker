@@ -170,6 +170,29 @@ export function axisLabelInterval(binCount: number, mode: Mode): number {
 }
 
 /**
+ * What labels the end of each line on the moves chart.
+ *
+ * A ticker symbol in Stock Market, where the field is trading. In Black Swan
+ * there is no tape and nothing trades, so a symbol there is a costume borrowed
+ * from the other mode — the name does the same job and is what the player
+ * actually answers to.
+ *
+ * Either way it is a text label, which is the point: the lines are told apart by
+ * colour, and colour is never allowed to be the only channel.
+ */
+export function lineLabels(mode: Mode, players: readonly Player[]): Map<string, string> {
+  if (mode === 'stock') return tickerSymbols(players)
+  return new Map(players.map((player) => [player.id, chartName(player.name)]))
+}
+
+/** As much of a name as fits in the chart's right-hand margin. */
+function chartName(name: string): string {
+  const [first = ''] = name.trim().split(/\s+/)
+  // Eight characters of the 10px tape face is about the 62 units left for it.
+  return first.length > 8 ? `${first.slice(0, 7)}…` : first
+}
+
+/**
  * Ticker symbols for a field of players, guaranteed distinct.
  *
  * Taking the first four letters is not enough: "Scott C" and "Scott E" both give
