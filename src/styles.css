@@ -451,7 +451,8 @@ body {
 }
 
 /*
- * A centred modal, appearing once the marbles have settled.
+ * The results card, appearing once the marbles have settled. Draggable from its
+ * grip, and anchored where the live standings sat.
  *
  * The entrance animates `opacity` and `scale` — deliberately not `transform`,
  * which the drag handler owns. They are separate properties, so the two compose
@@ -459,11 +460,12 @@ body {
  * override the inline transform and freeze the card in place.
  */
 .panel-results {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  /* Where the standings were a moment ago, so the card that replaces them opens
+     in the same place instead of sliding to the middle of the board and back. */
+  top: calc(var(--topnav-height) + 14px);
+  right: 22px;
   width: min(620px, calc(100vw - 32px));
-  max-height: min(84dvh, 940px);
+  max-height: calc(100dvh - var(--topnav-height) - 32px);
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -1468,6 +1470,14 @@ input[type='range']:focus-visible {
     right: 12px;
     top: max(12px, env(safe-area-inset-top));
     width: 208px;
+  }
+
+  /* Same corner as the standings here too, and wide enough to read a table in. */
+  .panel-results {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100dvh - var(--topnav-height) - 24px);
   }
 
   .verdict-name {

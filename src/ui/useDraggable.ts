@@ -4,14 +4,16 @@ import { useEffect, useRef } from 'react'
 const EDGE_MARGIN = 48
 
 /**
- * Lets a centred panel be dragged by a handle.
+ * Lets a panel be dragged by a handle.
  *
  * The offset is written straight to the element's transform rather than held in
  * state: a drag fires pointer events at screen refresh rate, and re-rendering a
  * panel containing a chart and a table that often would make it lag the cursor.
  *
- * The element is expected to be centred by CSS (`translate(-50%, -50%)`), which
- * this preserves — so it opens centred and the drag is a delta from there.
+ * Wherever CSS puts the panel is where it opens; the drag is a delta from there.
+ * The limits are measured from the panel itself, so it can be moved until it is
+ * nearly off one edge but never past — and never upward past the top of the
+ * window, since the grip is along its top edge and would go with it.
  */
 export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLElement>() {
   const panel = useRef<TPanel>(null)
@@ -29,9 +31,30 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
     let fromX = 0
     let fromY = 0
 
+    // How far the offset may run, worked out when a drag starts.
+    let limits = { minX: 0, maxX: 0, minY: 0, maxY: 0 }
+
     const draw = () => {
       const { x, y } = offset.current
-      card.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+      card.style.transform = `translate(${x}px, ${y}px)`
+    }
+
+    /** The range of offsets that keeps the panel reachable. */
+    const measure = () => {
+      const box = card.getBoundingClientRect()
+      // Where CSS alone would put it: the current position less the drag so far.
+      const left = box.left - offset.current.x
+      const top = box.top - offset.current.y
+
+      return {
+        // Sideways, keep a strip of the card on screen at either edge.
+        minX: EDGE_MARGIN - (left + box.width),
+        maxX: window.innerWidth - EDGE_MARGIN - left,
+        // Never above the window: the grip is the card's top edge, and pushing it
+        // off the top would leave nothing to drag it back by.
+        minY: -top,
+        maxY: window.innerHeight - EDGE_MARGIN - top,
+      }
     }
 
     const onPointerDown = (event: PointerEvent) => {
@@ -44,6 +67,7 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
       originY = event.clientY
       fromX = offset.current.x
       fromY = offset.current.y
+      limits = measure()
       grip.setPointerCapture(event.pointerId)
       card.dataset.dragging = 'true'
       event.preventDefault()
@@ -51,11 +75,9 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
 
     const onPointerMove = (event: PointerEvent) => {
       if (!dragging) return
-      const limitX = window.innerWidth / 2 - EDGE_MARGIN
-      const limitY = window.innerHeight / 2 - EDGE_MARGIN
       offset.current = {
-        x: clamp(fromX + event.clientX - originX, -limitX, limitX),
-        y: clamp(fromY + event.clientY - originY, -limitY, limitY),
+        x: clamp(fromX + event.clientX - originX, limits.minX, limits.maxX),
+        y: clamp(fromY + event.clientY - originY, limits.minY, limits.maxY),
       }
       draw()
     }
