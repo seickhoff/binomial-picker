@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { binomialPmf } from '../game/binomial'
 import { MAX_ROWS, MIN_ROWS } from '../game/geometry'
 import { MODES, MODE_ORDER } from '../game/modes'
@@ -26,11 +27,24 @@ export function SetupPanel() {
   const removePlayer = useGame((s) => s.removePlayer)
   const renamePlayer = useGame((s) => s.renamePlayer)
   const setPlayerActive = useGame((s) => s.setPlayerActive)
+  const sortRoster = useGame((s) => s.sortRoster)
   const settleRule = useGame((s) => s.settleRule)
   const setSettleRule = useGame((s) => s.setSettleRule)
   const autoSessions = useGame((s) => s.autoSessions)
   const setAutoSessions = useGame((s) => s.setAutoSessions)
   const start = useGame((s) => s.start)
+
+  /*
+   * Filed on the way in and on the way out.
+   *
+   * On the way in so the list is tidy every time setup opens, and on the way out
+   * to catch a name finished with the Enter key or the Drop button, neither of
+   * which blurs the field first.
+   */
+  useEffect(() => {
+    sortRoster()
+    return sortRoster
+  }, [sortRoster])
 
   const playing = players.filter((p) => p.active)
   const enoughPlayers = playing.length >= MIN_PLAYERS
@@ -118,6 +132,9 @@ export function SetupPanel() {
                   maxLength={20}
                   aria-label={`Name for player ${player.slot + 1} (${color.label})`}
                   onChange={(e) => renamePlayer(player.id, e.target.value)}
+                  // Filed once the name is finished. Sorting on every keystroke
+                  // would slide the row away from the cursor mid-word.
+                  onBlur={sortRoster}
                 />
                 <span className="player-symbol" title={`Ticker symbol for ${player.name}`}>
                   {symbols.get(player.id)}

@@ -25,6 +25,24 @@ export function activePlayers(players: readonly Player[]): Player[] {
   return players.filter((p) => p.active)
 }
 
+/**
+ * Roster order: by name, as a person would file them.
+ *
+ * Collated rather than compared as strings, for two reasons. `numeric` puts
+ * "Player 9" before "Player 10", where a plain comparison reads the "1" and files
+ * it second. And `sensitivity: 'base'` ignores case and accents, so "de Vries"
+ * lands next to "De Vries" instead of in a separate block after every capital.
+ */
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
+export function byName(a: Player, b: Player): number {
+  return collator.compare(a.name, b.name) || a.slot - b.slot
+}
+
+function sortedByName(players: readonly Player[]): Player[] {
+  return [...players].sort(byName)
+}
+
 function lowestFreeSlot(players: readonly Player[]): number {
   const taken = new Set(players.map((p) => p.slot))
   for (let slot = 0; slot < MAX_PLAYERS; slot++) if (!taken.has(slot)) return slot
@@ -113,6 +131,14 @@ export interface GameState {
   renamePlayer: (id: string, name: string) => void
   /** Sit a player out, or bring them back in. */
   setPlayerActive: (id: string, active: boolean) => void
+  /**
+   * Files the roster by name.
+   *
+   * Called when a name is finished rather than as it is typed: re-sorting on
+   * every keystroke would slide the row out from under the cursor, and a name
+   * half-typed is not the name being filed.
+   */
+  sortRoster: () => void
   /** True when enough players are in to hold a round. */
   canStart: () => boolean
   start: () => void
@@ -192,6 +218,8 @@ export const useGame = create<GameState>()(
         set((state) => ({
           players: state.players.map((p) => (p.id === id ? { ...p, active } : p)),
         })),
+
+      sortRoster: () => set((state) => ({ players: sortedByName(state.players) })),
 
       canStart: () => activePlayers(get().players).length >= MIN_PLAYERS,
 
@@ -290,8 +318,11 @@ export const useGame = create<GameState>()(
           if (Number.isFinite(n)) idCounter = Math.max(idCounter, n)
         }
 
-        // Rosters saved before sit-out existed have no `active` field.
-        state.players = state.players.map((p) => ({ ...p, active: p.active !== false }))
+        // Rosters saved before sit-out existed have no `active` field. Filed on
+        // the way in, so a roster saved out of order comes back tidy.
+        state.players = sortedByName(
+          state.players.map((p) => ({ ...p, active: p.active !== false })),
+        )
 
         // A persisted round would reference a stale field; always start fresh.
         const entrantIds = activePlayers(state.players).map((p) => p.id)
