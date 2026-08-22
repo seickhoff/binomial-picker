@@ -1,0 +1,9 @@
+node_modules
+dist
+# Per-machine tool permissions, not project configuration.
+.claude/settings.local.json
+dist-ssr
+.vercel
+*.local
+.DS_Store
+*.tsbuildinfo
