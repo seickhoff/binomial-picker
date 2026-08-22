@@ -15,8 +15,6 @@ export default function App() {
   useSessionFlow()
 
   const phase = useGame((s) => s.phase)
-  const start = useGame((s) => s.start)
-  const release = useGame((s) => s.release)
   const mode = useGame((s) => s.mode)
   const backToSetup = useGame((s) => s.backToSetup)
   const setOverview = useGame((s) => s.setOverview)
@@ -25,11 +23,11 @@ export default function App() {
   /*
    * Space and Esc. Neither fires while a text field has focus.
    *
-   * Space does two things at once, which is deliberate: it gets the round going,
-   * and it pulls the camera back to take in the whole board for as long as it is
-   * held. So holding it through the start of a round both drops the marbles and
-   * watches them from far enough away to see every peg, and letting go returns to
-   * the close follow shot.
+   * Space pulls the camera back to take in the whole board for as long as it is
+   * held, and does nothing else. It used to start a round as well, which made
+   * looking at a finished board throw it away and drop again — a keypress meant
+   * to inspect something is a poor place to put an irreversible action. Rounds
+   * start from the Drop button, the placard, or the buttons on the results.
    */
   useEffect(() => {
     function typing(event: KeyboardEvent) {
@@ -46,13 +44,18 @@ export default function App() {
         return
       }
       if (event.code === 'Space') {
+        /*
+         * Also stops the browser pressing a focused button with the same
+         * keystroke, which is the other way space restarted rounds: after
+         * clicking "New session" that button keeps focus, so a space meant for
+         * the camera pressed it again.
+         *
+         * The cost is that space no longer activates buttons anywhere in the app.
+         * Enter still does, so nothing becomes unreachable from the keyboard, and
+         * a focused checkbox is untouched — the guard above lets inputs keep it.
+         */
         event.preventDefault()
         setOverview(true)
-        // Held keys repeat, and a repeat is not a second press: without this,
-        // holding space in setup restarted the round many times a second.
-        if (event.repeat) return
-        if (phase === 'opening') release()
-        else if (phase !== 'running') start()
       }
     }
 
@@ -74,7 +77,7 @@ export default function App() {
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
     }
-  }, [phase, start, release, backToSetup, setOverview])
+  }, [phase, backToSetup, setOverview])
 
   const tickerRunning = mode === 'stock' && phase !== 'setup'
 
