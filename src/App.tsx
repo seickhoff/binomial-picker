@@ -9,6 +9,7 @@ import { TickerTape } from './ui/TickerTape'
 import { MODES } from './game/modes'
 import { useGame } from './game/store'
 import { useGameAudio } from './audio/useGameAudio'
+import { ownsSpace, typing } from './ui/keys'
 
 export default function App() {
   useGameAudio()
@@ -21,41 +22,43 @@ export default function App() {
   const info = MODES[mode]
 
   /*
-   * Space and Esc. Neither fires while a text field has focus.
+   * Space and Esc.
    *
    * Space pulls the camera back to take in the whole board for as long as it is
    * held, and does nothing else. It used to start a round as well, which made
-   * looking at a finished board throw it away and drop again — a keypress meant
-   * to inspect something is a poor place to put an irreversible action. Rounds
-   * start from the Drop button, the placard, or the buttons on the results.
+   * looking at a finished board throw it away and drop again — a keystroke meant
+   * to inspect something is a poor place for an irreversible action. Rounds start
+   * from the Drop button, the placard, or the buttons on the results.
+   *
+   * It works wherever the focus happens to be, save for the few controls that
+   * have a real claim on the key — see `ownsSpace`. Esc stays out of text fields
+   * entirely, where it means "never mind this edit" rather than "leave the round".
    */
   useEffect(() => {
-    function typing(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null
-      return target !== null && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
-    }
-
     function onKeyDown(event: KeyboardEvent) {
-      if (typing(event)) return
+      const target = event.target as HTMLElement | null
 
-      if (event.code === 'Escape' && phase !== 'setup') {
-        event.preventDefault()
-        backToSetup()
-        return
-      }
-      if (event.code === 'Space') {
+      if (event.code === 'Space' && !ownsSpace(target)) {
         /*
          * Also stops the browser pressing a focused button with the same
          * keystroke, which is the other way space restarted rounds: after
          * clicking "New session" that button keeps focus, so a space meant for
          * the camera pressed it again.
          *
-         * The cost is that space no longer activates buttons anywhere in the app.
-         * Enter still does, so nothing becomes unreachable from the keyboard, and
-         * a focused checkbox is untouched — the guard above lets inputs keep it.
+         * The cost is that space no longer activates buttons. Enter still does,
+         * so nothing becomes unreachable from the keyboard.
          */
         event.preventDefault()
         setOverview(true)
+        return
+      }
+
+      if (typing(target)) return
+
+      if (event.code === 'Escape' && phase !== 'setup') {
+        event.preventDefault()
+        backToSetup()
+        return
       }
     }
 
