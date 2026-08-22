@@ -42,6 +42,17 @@ function emptyRound(
   return { index, rows, entrantIds, landings: [], tieBreak, openPrices, plan }
 }
 
+/**
+ * Where a session starts.
+ *
+ * Stock Market sessions are dated days of trading, so each one opens on its
+ * placard. Black Swan has no calendar to hang that on — its tie-break is sudden
+ * death, not tomorrow — so it drops straight away, as it always has.
+ */
+function openingPhase(mode: Mode): Phase {
+  return mode === 'stock' ? 'opening' : 'running'
+}
+
 /** Everyone opens a fresh series at the same price. */
 function openingPrices(entrantIds: readonly string[]): Record<string, number> {
   return Object.fromEntries(entrantIds.map((id) => [id, START_PRICE]))
@@ -70,6 +81,16 @@ export interface GameState {
   plinkSound: boolean
   /** Silences everything, without forgetting which sounds were wanted. */
   muted: boolean
+  /**
+   * Run a Stock Market series by itself: each session opens on its own placard
+   * and, while ties are outstanding, the next one follows the summary.
+   */
+  autoSessions: boolean
+  /**
+   * When the series' first session was held, as epoch milliseconds. Later
+   * sessions are dated forward from it, one trading day each.
+   */
+  seriesStart: number
   round: Round
   history: Round[]
   /** Bumped for every release so the physics marbles remount cleanly. */
@@ -86,6 +107,7 @@ export interface GameState {
   setFloorSound: (on: boolean) => void
   setPlinkSound: (on: boolean) => void
   setMuted: (muted: boolean) => void
+  setAutoSessions: (on: boolean) => void
   addPlayer: () => void
   removePlayer: (id: string) => void
   renamePlayer: (id: string, name: string) => void
@@ -94,6 +116,8 @@ export interface GameState {
   /** True when enough players are in to hold a round. */
   canStart: () => boolean
   start: () => void
+  /** Lets the held marbles go, once the session's placard has been seen. */
+  release: () => void
   /** Re-drop only the tied leaders. */
   startTieBreak: () => void
   /** Same field, same players, fresh drop. */
@@ -120,6 +144,8 @@ export const useGame = create<GameState>()(
       floorSound: true,
       plinkSound: true,
       muted: false,
+      autoSessions: true,
+      seriesStart: 0,
       round: emptyRound(
         0,
         DEFAULT_ROWS,
@@ -141,6 +167,7 @@ export const useGame = create<GameState>()(
       setFloorSound: (floorSound) => set({ floorSound }),
       setPlinkSound: (plinkSound) => set({ plinkSound }),
       setMuted: (muted) => set({ muted }),
+      setAutoSessions: (autoSessions) => set({ autoSessions }),
 
       addPlayer: () =>
         set((state) =>
@@ -169,7 +196,7 @@ export const useGame = create<GameState>()(
       canStart: () => activePlayers(get().players).length >= MIN_PLAYERS,
 
       start: () => {
-        const { players, rows, runToken } = get()
+        const { players, rows, runToken, mode } = get()
         const entrants = activePlayers(players)
         if (entrants.length < MIN_PLAYERS) return
 
@@ -178,11 +205,19 @@ export const useGame = create<GameState>()(
         const plan = drawRound({ entrantIds, rows })
 
         set({
-          phase: 'running',
+          phase: openingPhase(mode),
           history: [],
+          // Day one of a new series is today; the sessions after it are dated
+          // forward from here.
+          seriesStart: Date.now(),
           round: emptyRound(0, rows, entrantIds, false, openPrices, plan),
           runToken: runToken + 1,
         })
+      },
+
+      release: () => {
+        if (get().phase !== 'opening') return
+        set({ phase: 'running' })
       },
 
       rematch: () => get().start(),
@@ -201,7 +236,7 @@ export const useGame = create<GameState>()(
         const plan = drawRound({ entrantIds: field, rows })
 
         set({
-          phase: 'running',
+          phase: openingPhase(mode),
           history: [...history, round],
           round: emptyRound(round.index + 1, rows, field, true, openPrices, plan),
           runToken: runToken + 1,
@@ -243,6 +278,7 @@ export const useGame = create<GameState>()(
         floorSound: state.floorSound,
         plinkSound: state.plinkSound,
         muted: state.muted,
+        autoSessions: state.autoSessions,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return

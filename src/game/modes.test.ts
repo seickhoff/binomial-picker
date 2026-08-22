@@ -141,6 +141,11 @@ describe('stock ties carry the price forward', () => {
     expect(next.openPrices[ids[1]]).toBe(102)
     expect(next.openPrices[ids[2]]).toBe(98)
     expect(next.openPrices[ids[3]]).toBe(99)
+
+    // The next day opens on its placard, and the marbles are held until it is
+    // done with.
+    expect(useGame.getState().phase).toBe('opening')
+    useGame.getState().release()
     expect(useGame.getState().phase).toBe('running')
   })
 

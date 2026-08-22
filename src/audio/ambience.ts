@@ -11,7 +11,9 @@ import type { Mode, Phase } from '../game/types'
  * in Black Swan, which has no trading floor to stand on.
  */
 export function isFloorOpen(mode: Mode, phase: Phase, enabled: boolean): boolean {
-  return enabled && mode === 'stock' && phase === 'running'
+  // Open from the placard, not from the first marble: the bell rings as the day
+  // is announced, which is the whole point of ringing it.
+  return enabled && mode === 'stock' && (phase === 'opening' || phase === 'running')
 }
 
 /**

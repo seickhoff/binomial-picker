@@ -105,6 +105,38 @@ export function rematchLabel(mode: Mode): string {
 }
 
 /**
+ * What a session's placard says.
+ *
+ * `day` is 1-based. The kicker is the only part that changes down a series: the
+ * first session opens the market, and every one after it is there because
+ * yesterday's did not settle — worth saying, or a second placard just looks like
+ * the game starting over.
+ */
+export function sessionPlacard(
+  day: number,
+  date: Date,
+): {
+  kicker: string
+  title: string
+  date: string
+} {
+  return {
+    kicker: day === 1 ? 'Opening bell' : 'Ties unsettled — trading resumes',
+    title: `Day ${day}`,
+    date: date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    }),
+  }
+}
+
+/** Says that the next session is coming without being asked for. */
+export function autoSessionHint(mode: Mode): string {
+  return `The next ${MODES[mode].tieBreakUnit} opens by itself in a moment.`
+}
+
+/**
  * Show every Nth bin label on the chart's axis. Prices are far wider than bin
  * numbers, so they need thinning sooner.
  */

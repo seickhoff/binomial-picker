@@ -9,6 +9,7 @@ import { PlayerDot, PlayerName } from './PlayerTag'
 import { TapeQuote } from './TapeQuote'
 import { useDraggable } from './useDraggable'
 import {
+  autoSessionHint,
   bottomKicker,
   heroFigure,
   rematchLabel,
@@ -34,6 +35,7 @@ export function ResultsPanel() {
   const chartOpen = useGame((s) => s.chartOpen)
   const setChartOpen = useGame((s) => s.setChartOpen)
   const startTieBreak = useGame((s) => s.startTieBreak)
+  const autoSessions = useGame((s) => s.autoSessions)
   const rematch = useGame((s) => s.rematch)
   const backToSetup = useGame((s) => s.backToSetup)
 
@@ -191,6 +193,12 @@ export function ResultsPanel() {
           Setup
         </button>
       </div>
+
+      {/* Says so, rather than letting the screen change on its own and look like
+          it took the decision away. */}
+      {!settled && autoSessions && mode === 'stock' && (
+        <p className="hint">{autoSessionHint(mode)}</p>
+      )}
     </section>
   )
 }

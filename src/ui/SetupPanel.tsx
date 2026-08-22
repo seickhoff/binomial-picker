@@ -28,6 +28,8 @@ export function SetupPanel() {
   const setPlayerActive = useGame((s) => s.setPlayerActive)
   const settleRule = useGame((s) => s.settleRule)
   const setSettleRule = useGame((s) => s.setSettleRule)
+  const autoSessions = useGame((s) => s.autoSessions)
+  const setAutoSessions = useGame((s) => s.setAutoSessions)
   const start = useGame((s) => s.start)
 
   const playing = players.filter((p) => p.active)
@@ -164,6 +166,24 @@ export function SetupPanel() {
           </button>
         </div>
         <p className="hint">{settleRuleHint(settleRule)}</p>
+        {/* Only Stock Market has dated sessions to run through. */}
+        {mode === 'stock' && (
+          <>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={autoSessions}
+                onChange={(e) => setAutoSessions(e.target.checked)}
+              />
+              Run the days automatically
+            </label>
+            <p className="hint">
+              {autoSessions
+                ? 'Each day opens on its own placard, and an unsettled close rolls into tomorrow by itself.'
+                : 'Each day opens on its own placard. An unsettled close waits for you.'}
+            </p>
+          </>
+        )}
       </section>
 
       <section className="panel-section">

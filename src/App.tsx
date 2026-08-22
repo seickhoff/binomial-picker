@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { GameCanvas } from './three/GameCanvas'
 import { Hud } from './ui/Hud'
 import { ResultsPanel } from './ui/ResultsPanel'
+import { SessionPlacard } from './ui/SessionPlacard'
 import { SetupPanel } from './ui/SetupPanel'
+import { useSessionFlow } from './ui/useSessionFlow'
 import { TickerTape } from './ui/TickerTape'
 import { MODES } from './game/modes'
 import { useGame } from './game/store'
@@ -10,9 +12,11 @@ import { useGameAudio } from './audio/useGameAudio'
 
 export default function App() {
   useGameAudio()
+  useSessionFlow()
 
   const phase = useGame((s) => s.phase)
   const start = useGame((s) => s.start)
+  const release = useGame((s) => s.release)
   const mode = useGame((s) => s.mode)
   const backToSetup = useGame((s) => s.backToSetup)
   const info = MODES[mode]
@@ -29,14 +33,17 @@ export default function App() {
         backToSetup()
         return
       }
-      if (event.code === 'Space' && phase !== 'running') {
+      if (event.code === 'Space') {
         event.preventDefault()
-        start()
+        // Space means "get on with it": from a placard that's dropping the
+        // marbles now, and otherwise starting a session. It does nothing mid-drop.
+        if (phase === 'opening') release()
+        else if (phase !== 'running') start()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [phase, start, backToSetup])
+  }, [phase, start, release, backToSetup])
 
   const tickerRunning = mode === 'stock' && phase !== 'setup'
 
@@ -59,8 +66,12 @@ export default function App() {
       {/* One panel at a time: the results table supersedes the live standings,
           and a tall results card would otherwise collide with it. */}
       {phase === 'setup' && <SetupPanel />}
-      {phase === 'running' && <Hud />}
+      {(phase === 'opening' || phase === 'running') && <Hud />}
       {phase === 'results' && <ResultsPanel />}
+
+      {/* Over everything, including the standings: it is what the session is
+          waiting on. */}
+      {phase === 'opening' && <SessionPlacard />}
     </div>
   )
 }

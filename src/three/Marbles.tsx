@@ -147,14 +147,18 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
 
   useEffect(() => {
     setTimedReleases(0)
+    // Held until the session actually opens. Starting the stagger under the
+    // placard would drop the first marbles behind it, and they would be halfway
+    // down by the time it cleared.
+    if (phase !== 'running') return
     const gap = staggerFor(entrants.length, dropMode)
     const timers = entrants.map((_, i) =>
       window.setTimeout(() => setTimedReleases((n) => Math.max(n, i + 1)), i * gap),
     )
     return () => timers.forEach((t) => window.clearTimeout(t))
-  }, [dropMode, entrants.length, runToken])
+  }, [dropMode, entrants.length, runToken, phase])
 
-  if (phase === 'setup') return null
+  if (phase === 'setup' || phase === 'opening') return null
 
   const spread = entrants.length > 1 ? DEPTH_SPREAD : 0
 

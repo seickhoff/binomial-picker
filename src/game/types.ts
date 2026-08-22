@@ -1,4 +1,12 @@
-export type Phase = 'setup' | 'running' | 'results'
+export type Phase =
+  | 'setup'
+  /**
+   * The session's placard is up and the marbles are held at the funnel. Long
+   * enough to read what day it is, and to let the bell ring before the drop.
+   */
+  | 'opening'
+  | 'running'
+  | 'results'
 
 /** Which chart the results panel shows. */
 export type ChartView =
