@@ -70,6 +70,30 @@ describe('smoothing a line', () => {
     }
   })
 
+  it('leaves a flat shoulder at every turn', () => {
+    // What "rounded" means here: the curve arrives at a peak level and leaves it
+    // level, so the corner is an arc rather than a point. Both control points
+    // either side of a turn sit at the turn's own height.
+    const points = sawtooth(7)
+    const parts = segments(smoothPath(points))
+
+    parts.forEach((numbers, index) => {
+      const isTurn = index > 0
+      if (isTurn) expect(numbers[1], `into segment ${index}`).toBeCloseTo(points[index].y, 6)
+      const lands = index < parts.length - 1
+      if (lands) expect(numbers[3], `out of segment ${index}`).toBeCloseTo(points[index + 1].y, 6)
+    })
+  })
+
+  it('reaches halfway across each gap, the roundest a cubic can', () => {
+    const points = sawtooth(4)
+    for (const [index, numbers] of segments(smoothPath(points)).entries()) {
+      const span = points[index + 1].x - points[index].x
+      expect(numbers[0] - points[index].x).toBeCloseTo(span / 2, 6)
+      expect(points[index + 1].x - numbers[2]).toBeCloseTo(span / 2, 6)
+    }
+  })
+
   it('keeps a straight run straight', () => {
     // Three points on a line: the tangents match the slope, so the control
     // points land on it too and the curve is the line.
