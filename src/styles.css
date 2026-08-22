@@ -460,10 +460,16 @@ body {
  * override the inline transform and freeze the card in place.
  */
 .panel-results {
-  /* Where the standings were a moment ago, so the card that replaces them opens
-     in the same place instead of sliding to the middle of the board and back. */
+  /* Under the nav, centred across the board.
+   *
+   * Centred with auto margins against both offsets rather than the usual
+   * `left: 50%` and a translate, because `transform` belongs to the drag handler:
+   * the moment it writes one, a transform-based centring would be cancelled and
+   * the card would jump half its width. */
   top: calc(var(--topnav-height) + 14px);
-  right: 22px;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   width: min(620px, calc(100vw - 32px));
   max-height: calc(100dvh - var(--topnav-height) - 32px);
   overflow-y: auto;
@@ -1472,7 +1478,7 @@ input[type='range']:focus-visible {
     width: 208px;
   }
 
-  /* Same corner as the standings here too, and wide enough to read a table in. */
+  /* Full width here: there is no room to centre a table in. */
   .panel-results {
     left: 12px;
     right: 12px;

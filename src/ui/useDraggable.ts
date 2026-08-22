@@ -41,13 +41,13 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
     /**
      * The range of offsets the panel may be dragged through.
      *
-     * The gaps it opens with are the tightest it may ever sit: it can be moved
-     * away from the top and right edges, never toward them. So it cannot be
-     * tucked under the nav — where the nav would draw over it and the grip would
-     * be unreachable — and it cannot be pushed off the side of the window.
+     * Sideways and downward it runs until a margin is left between it and the
+     * window, which is what makes room to see the board behind it — the point of
+     * being draggable at all.
      *
-     * Away from those two edges it runs to a margin, which is what makes room to
-     * see the board behind it: the point of being draggable at all.
+     * Upward it stops where it opened. Above that is the nav, which draws over
+     * the panel: a card tucked under it loses the grip along its top edge, and
+     * with the grip goes any way of dragging it back out.
      */
     const measure = () => {
       const box = card.getBoundingClientRect()
@@ -56,9 +56,8 @@ export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLEle
       const top = box.top - offset.current.y
 
       return {
-        // Never positive: zero is the opening position, at its own right-hand gap.
         minX: Math.min(0, EDGE_MARGIN - left),
-        maxX: 0,
+        maxX: Math.max(0, window.innerWidth - EDGE_MARGIN - (left + box.width)),
         minY: 0,
         maxY: Math.max(0, window.innerHeight - EDGE_MARGIN - (top + box.height)),
       }
