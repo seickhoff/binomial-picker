@@ -43,7 +43,9 @@ export function SlotLabels({
       {geo.binCenters.map((x, bin) => {
         const move = netMove(bin, geo.rows)
         const label =
-          openPrice === null ? formatMove(move) : formatPrice(closingPrice(bin, geo.rows, openPrice))
+          openPrice === null
+            ? formatMove(move)
+            : formatPrice(closingPrice(bin, geo.rows, openPrice))
         return (
           <Html
             key={bin}

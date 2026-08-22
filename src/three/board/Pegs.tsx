@@ -115,12 +115,12 @@ export function Pegs({ geo }: { geo: BoardGeometry }) {
  * three's parameter type for this hook is an internal name that has changed
  * between versions, and these two fields are all this needs.
  */
-function addPerInstanceFlash(shader: {
-  vertexShader: string
-  fragmentShader: string
-}): void {
+function addPerInstanceFlash(shader: { vertexShader: string; fragmentShader: string }): void {
   shader.vertexShader = shader.vertexShader
-    .replace('#include <common>', '#include <common>\nattribute float aFlash;\nvarying float vFlash;')
+    .replace(
+      '#include <common>',
+      '#include <common>\nattribute float aFlash;\nvarying float vFlash;',
+    )
     .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFlash = aFlash;')
 
   shader.fragmentShader = shader.fragmentShader

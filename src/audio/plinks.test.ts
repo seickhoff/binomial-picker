@@ -24,7 +24,10 @@ describe('the note a peg rings', () => {
 
   it('rings higher to the right and lower to the left', () => {
     const row = 8
-    const pitches = Array.from({ length: row + 1 }, (_, k) => voiceForPeg(pegIndex(row, k)).frequency)
+    const pitches = Array.from(
+      { length: row + 1 },
+      (_, k) => voiceForPeg(pegIndex(row, k)).frequency,
+    )
 
     for (let k = 1; k < pitches.length; k++) {
       expect(pitches[k], `peg ${k} of row ${row}`).toBeGreaterThan(pitches[k - 1])

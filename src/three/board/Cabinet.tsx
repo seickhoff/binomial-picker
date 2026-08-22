@@ -64,9 +64,7 @@ function WallBar({ segment, side }: { segment: WallSegment; side: Side }) {
 function Floor({ geo }: { geo: BoardGeometry }) {
   return (
     <mesh position={[0, geo.floorY - FLOOR_THICKNESS / 2, 0]} receiveShadow>
-      <boxGeometry
-        args={[geo.width + WALL_THICKNESS * 2, FLOOR_THICKNESS, BOARD_DEPTH * 1.3]}
-      />
+      <boxGeometry args={[geo.width + WALL_THICKNESS * 2, FLOOR_THICKNESS, BOARD_DEPTH * 1.3]} />
       <meshStandardMaterial color={FLOOR_COLOR} metalness={0.35} roughness={0.6} />
     </mesh>
   )

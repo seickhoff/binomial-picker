@@ -130,8 +130,7 @@ export const useGame = create<GameState>()(
       history: [],
       runToken: 0,
 
-      setRows: (rows) =>
-        set({ rows: Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.round(rows))) }),
+      setRows: (rows) => set({ rows: Math.min(MAX_ROWS, Math.max(MIN_ROWS, Math.round(rows))) }),
       setMode: (mode) => set({ mode }),
       setSettleRule: (settleRule) => set({ settleRule }),
       setChartView: (chartView) => set({ chartView }),
@@ -198,9 +197,7 @@ export const useGame = create<GameState>()(
         const field = [...round.entrantIds]
         // In Stock Market everyone resumes from the price they reached; in Black
         // Swan the prices are unused and this is simply a fresh drop.
-        const openPrices = Object.fromEntries(
-          field.map((id) => [id, priceAfter(id, round)]),
-        )
+        const openPrices = Object.fromEntries(field.map((id) => [id, priceAfter(id, round)]))
         const plan = drawRound({ entrantIds: field, rows })
 
         set({

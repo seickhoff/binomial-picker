@@ -94,8 +94,12 @@ describe('scoring differs by mode', () => {
   it('ranks the same round differently in each mode', async () => {
     const stock = await playRound('stock')
     const swan = await playRound('blackSwan')
-    const stockOrder = stock.rankRound(stock.round, stock.players, 'stock').map((e) => e.landing.bin)
-    const swanOrder = swan.rankRound(swan.round, swan.players, 'blackSwan').map((e) => e.landing.bin)
+    const stockOrder = stock
+      .rankRound(stock.round, stock.players, 'stock')
+      .map((e) => e.landing.bin)
+    const swanOrder = swan
+      .rankRound(swan.round, swan.players, 'blackSwan')
+      .map((e) => e.landing.bin)
 
     expect(stockOrder[0]).toBe(8)
     // Highest close first, so the centre bins beat the $94 loser.

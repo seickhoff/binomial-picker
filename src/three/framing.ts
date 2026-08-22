@@ -51,12 +51,7 @@ export interface Shot {
  * centre of frame. Solving at z = 0 therefore put the real front edge below the
  * bottom of the screen — which is exactly how it once got cropped.
  */
-export function edgeRise(
-  framedHeight: number,
-  halfFovTan: number,
-  side: 1 | -1,
-  z = 0,
-): number {
+export function edgeRise(framedHeight: number, halfFovTan: number, side: 1 | -1, z = 0): number {
   const pitch = (PITCH_DEG * Math.PI) / 180
   const sinP = Math.sin(pitch)
   const cosP = Math.cos(pitch)
@@ -107,11 +102,7 @@ function anchorTo(
  * the board grows taller with every row while the marble each tag names and the
  * bin it lands in stay exactly one peg-space across.
  */
-export function overlayScale(
-  geo: BoardGeometry,
-  aspect: number,
-  viewportHeight: number,
-): number {
+export function overlayScale(geo: BoardGeometry, aspect: number, viewportHeight: number): number {
   return shotFor(geo, aspect, viewportHeight).wideHeight
 }
 
@@ -128,11 +119,7 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
    * settles it. Clamping the opening down to meet it instead would put the
    * lattice back off screen on exactly the deep boards this is here to fix.
    */
-  const wideHeight = Math.max(
-    geo.binWallHeight * 3.4,
-    (geo.width * 1.12) / aspect,
-    closeHeight,
-  )
+  const wideHeight = Math.max(geo.binWallHeight * 3.4, (geo.width * 1.12) / aspect, closeHeight)
 
   // The nearest, lowest corner the device draws: the bottom of the plinth's front
   // face, which the price ladder sits on rather than below.

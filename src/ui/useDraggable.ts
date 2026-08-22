@@ -13,10 +13,7 @@ const EDGE_MARGIN = 48
  * The element is expected to be centred by CSS (`translate(-50%, -50%)`), which
  * this preserves — so it opens centred and the drag is a delta from there.
  */
-export function useDraggable<
-  TPanel extends HTMLElement,
-  THandle extends HTMLElement,
->() {
+export function useDraggable<TPanel extends HTMLElement, THandle extends HTMLElement>() {
   const panel = useRef<TPanel>(null)
   const handle = useRef<THandle>(null)
   const offset = useRef({ x: 0, y: 0 })

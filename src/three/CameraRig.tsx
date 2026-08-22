@@ -73,12 +73,7 @@ function targetFraming(shot: Shot, phase: string): { y: number; height: number }
 }
 
 /** Places the camera so `height` world units span the viewport, looking down. */
-function aimCamera(
-  camera: PerspectiveCamera,
-  y: number,
-  height: number,
-  halfFovTan: number,
-): void {
+function aimCamera(camera: PerspectiveCamera, y: number, height: number, halfFovTan: number): void {
   const distance = Math.max(height, MIN_VIEW_HEIGHT) / 2 / halfFovTan
   const pitch = (PITCH_DEG * Math.PI) / 180
 

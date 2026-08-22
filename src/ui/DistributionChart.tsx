@@ -100,13 +100,7 @@ export function DistributionChart({
             const y = baselineY - (t / peak) * PLOT_H
             return (
               <g key={t}>
-                <line
-                  x1={PAD.left}
-                  x2={width - PAD.right}
-                  y1={y}
-                  y2={y}
-                  className="chart-grid"
-                />
+                <line x1={PAD.left} x2={width - PAD.right} y1={y} y2={y} className="chart-grid" />
                 <text x={PAD.left - 7} y={y + 3.5} className="chart-tick chart-tick-y">
                   {formatPercent(t)}
                 </text>
@@ -194,9 +188,7 @@ export function DistributionChart({
               transform: `translate(-50%, 0)`,
             }}
           >
-            <strong>
-              {stock ? labelFor(hoveredInfo.bin) : `Bin ${hoveredInfo.bin}`}
-            </strong>
+            <strong>{stock ? labelFor(hoveredInfo.bin) : `Bin ${hoveredInfo.bin}`}</strong>
             <span>
               {formatPercent(hoveredInfo.probability)} · {formatOdds(hoveredInfo.probability)}
             </span>

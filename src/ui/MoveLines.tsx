@@ -54,8 +54,7 @@ export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLines
   const y = (value: number) => PAD.top + (1 - (value - min) / (max - min)) * PLOT_H
   const height = PAD.top + PLOT_H + PAD.bottom
 
-  const label = (value: number) =>
-    mode === 'stock' ? formatPrice(value) : formatSlots(value)
+  const label = (value: number) => (mode === 'stock' ? formatPrice(value) : formatSlots(value))
 
   return (
     <figure className="chart">
@@ -142,8 +141,7 @@ export function MoveLines({ entries, rows, mode, openPrice, symbols }: MoveLines
               .filter((walk) => walk.entry.player.id === hovered)
               .map(({ entry, values }) => (
                 <span key={entry.player.id}>
-                  <strong>{entry.player.name}</strong>{' '}
-                  {label(values[values.length - 1])}
+                  <strong>{entry.player.name}</strong> {label(values[values.length - 1])}
                 </span>
               ))}
           </div>

@@ -57,8 +57,14 @@ let floor: Floor | null = null
  * ones to a reader — a buffer that comes out empty, or one loud enough to clip —
  * and neither shows up anywhere except in a listener's ears.
  */
-export function noiseBuffer(context: Pick<AudioContext, 'sampleRate' | 'createBuffer'>): AudioBuffer {
-  const buffer = context.createBuffer(1, Math.floor(context.sampleRate * NOISE_SECONDS), context.sampleRate)
+export function noiseBuffer(
+  context: Pick<AudioContext, 'sampleRate' | 'createBuffer'>,
+): AudioBuffer {
+  const buffer = context.createBuffer(
+    1,
+    Math.floor(context.sampleRate * NOISE_SECONDS),
+    context.sampleRate,
+  )
   const samples = buffer.getChannelData(0)
 
   let last = 0

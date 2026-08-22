@@ -155,7 +155,12 @@ function symbolCandidates(name: string, slot: number): string[] {
   if (words.length > 1) {
     const stem = words[0].slice(0, 3)
     for (const word of words.slice(1)) candidates.push(`${stem}${word[0]}`)
-    candidates.push(words.map((word) => word[0]).join('').slice(0, 4))
+    candidates.push(
+      words
+        .map((word) => word[0])
+        .join('')
+        .slice(0, 4),
+    )
   }
 
   candidates.push(squashed.slice(0, 4))

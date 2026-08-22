@@ -17,15 +17,7 @@ export interface BoardProps {
 }
 
 /** The whole device, back to front. */
-export function Board({
-  geo,
-  landings,
-  players,
-  winnerBins,
-  fancy,
-  mode,
-  openPrice,
-}: BoardProps) {
+export function Board({ geo, landings, players, winnerBins, fancy, mode, openPrice }: BoardProps) {
   return (
     <group>
       <BackPanel geo={geo} />

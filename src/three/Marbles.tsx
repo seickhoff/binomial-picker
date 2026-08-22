@@ -39,7 +39,6 @@ const DEPTH_SPREAD = 0.5
  */
 const LABEL_LIFT = 0
 
-
 /** Gap between one release and the next. */
 function staggerFor(count: number, dropMode: DropMode): number {
   if (count < 2) return 0
@@ -294,11 +293,7 @@ function Marble({
             zIndexRange={[9, 0]}
             style={{ pointerEvents: 'none' }}
           >
-            <span
-              ref={label}
-              className="marble-label"
-              style={{ '--chip': color } as CSSProperties}
-            >
+            <span ref={label} className="marble-label" style={{ '--chip': color } as CSSProperties}>
               {openPrice === null ? player.name : `${player.name} ${formatPrice(openPrice)}`}
             </span>
           </Html>
@@ -319,4 +314,3 @@ function Marble({
     </>
   )
 }
-

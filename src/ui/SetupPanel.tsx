@@ -239,9 +239,7 @@ export function SetupPanel() {
         onClick={start}
         disabled={!enoughPlayers}
       >
-        {enoughPlayers
-          ? `Drop ${playing.length} marbles`
-          : `Need ${MIN_PLAYERS} players in`}
+        {enoughPlayers ? `Drop ${playing.length} marbles` : `Need ${MIN_PLAYERS} players in`}
       </button>
     </aside>
   )

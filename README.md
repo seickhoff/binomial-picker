@@ -29,12 +29,12 @@ the ends is a statement about everyone. Black Swan calls it sudden death and
 Stock Market calls it after hours, but the rule is the same.
 
 Note that "last" means different things per mode: the lowest close in Stock
-Market, and the *most likely* landing in Black Swan — where the centre bin is
+Market, and the _most likely_ landing in Black Swan — where the centre bin is
 the wooden spoon.
 
 A single peg is worth **50¢**, which follows from the slot spacing rather than
 being a separate rule: stepping one slot further right means one more right
-deflection *and* one fewer left one, so a slot is always two pegs' worth of
+deflection _and_ one fewer left one, so a slot is always two pegs' worth of
 movement. Prices therefore pass through half-dollars on the way down, and the
 ticker shows them.
 

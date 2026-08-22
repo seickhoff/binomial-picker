@@ -7,13 +7,7 @@ import { Backdrop, type BackdropTheme } from './Backdrop'
 import { fitDistance, viewSizeAt } from './fit'
 
 /** Sizes the shader backdrop to cover the widest shot the rig can take. */
-export function SceneBackdrop({
-  geo,
-  theme,
-}: {
-  geo: BoardGeometry
-  theme: BackdropTheme
-}) {
+export function SceneBackdrop({ geo, theme }: { geo: BoardGeometry; theme: BackdropTheme }) {
   const size = useThree((s) => s.size)
   const aspect = size.width / size.height
 

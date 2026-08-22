@@ -176,11 +176,7 @@ export function ResultsPanel() {
 
       <div className="actions">
         {!settled && (
-          <button
-            type="button"
-            className="btn btn-primary btn-alert"
-            onClick={startTieBreak}
-          >
+          <button type="button" className="btn btn-primary btn-alert" onClick={startTieBreak}>
             {tieBreakLabel(mode)}
           </button>
         )}
@@ -234,10 +230,7 @@ function VerdictBlock({
           // The tape's own look, standing still: the same quote the ticker was
           // showing a moment ago. No symbol when it speaks for more than one
           // player — showing one of them would read as that player's quote.
-          <TapeQuote
-            entry={lead}
-            symbol={tied ? undefined : symbols.get(lead.player.id)}
-          />
+          <TapeQuote entry={lead} symbol={tied ? undefined : symbols.get(lead.player.id)} />
         ) : (
           <p className="verdict-figure">{heroFigure(mode, lead)}</p>
         )}
@@ -247,15 +240,7 @@ function VerdictBlock({
   )
 }
 
-function ResultRow({
-  entry,
-  mode,
-  symbol,
-}: {
-  entry: RankedEntry
-  mode: Mode
-  symbol: string
-}) {
+function ResultRow({ entry, mode, symbol }: { entry: RankedEntry; mode: Mode; symbol: string }) {
   const { player, landing, rank, isWinner, isLoser, openPrice, closePrice, change } = entry
 
   return (

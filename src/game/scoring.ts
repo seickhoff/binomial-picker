@@ -129,11 +129,7 @@ export function settlementOf(round: Round, mode: Mode, rule: SettleRule): Settle
 }
 
 /** Round results, best first. Tied entries share a rank. */
-export function rankRound(
-  round: Round,
-  players: readonly Player[],
-  mode: Mode,
-): RankedEntry[] {
+export function rankRound(round: Round, players: readonly Player[], mode: Mode): RankedEntry[] {
   const byId = new Map(players.map((p) => [p.id, p]))
   const sorted = [...round.landings].sort(
     (a, b) => scoreOf(a, round, mode) - scoreOf(b, round, mode) || a.order - b.order,

@@ -71,10 +71,7 @@ export function TickerTape() {
 
   return (
     <div className="ticker" aria-hidden="true" ref={viewport}>
-      <div
-        className="ticker-run"
-        style={{ animationDuration: `${duration}s` } as CSSProperties}
-      >
+      <div className="ticker-run" style={{ animationDuration: `${duration}s` } as CSSProperties}>
         {/* Two identical halves of `repeats` groups each, scrolled by exactly
             one half — so the loop is seamless and always covers the screen. */}
         {Array.from({ length: repeats * 2 }, (_, copy) => (
@@ -171,7 +168,10 @@ function TickerItem({
     registry.set(player.id, [...(registry.get(player.id) ?? []), cell])
 
     return () => {
-      registry.set(player.id, (registry.get(player.id) ?? []).filter((c) => c !== cell))
+      registry.set(
+        player.id,
+        (registry.get(player.id) ?? []).filter((c) => c !== cell),
+      )
     }
   }, [player.id, registry])
 

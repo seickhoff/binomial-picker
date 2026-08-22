@@ -3,10 +3,7 @@ import { MAX_ROWS, MIN_ROWS, ROW_GAP, boardGeometry } from '../game/geometry'
 import { frameEdgeY, shotFor } from './framing'
 
 /** Every row count the slider offers. */
-const ALL_ROWS = Array.from(
-  { length: MAX_ROWS - MIN_ROWS + 1 },
-  (_, i) => MIN_ROWS + i,
-)
+const ALL_ROWS = Array.from({ length: MAX_ROWS - MIN_ROWS + 1 }, (_, i) => MIN_ROWS + i)
 /** Landscape, a tall window, and an ultrawide. */
 const VIEWPORTS = [
   { width: 1600, height: 900 },
