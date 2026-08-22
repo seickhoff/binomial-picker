@@ -244,6 +244,18 @@ function formatMove(move: number): string {
   return `${move > 0 ? '+' : '−'}$${Math.abs(move).toFixed(2)}`
 }
 
+/**
+ * A value in slots from the centre, for Black Swan, which has no prices.
+ *
+ * Halves are real: a walk crosses half a slot per peg, so a marble sits between
+ * slots for every odd row it has crossed.
+ */
+export function formatSlots(slots: number): string {
+  const rounded = Math.round(slots * 10) / 10
+  if (rounded === 0) return '0'
+  return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded)}`
+}
+
 export function formatChange(change: number): string {
   const arrow = change > 0 ? '▲' : change < 0 ? '▼' : '■'
   const sign = change > 0 ? '+' : change < 0 ? '−' : ''

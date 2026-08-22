@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react'
-import { formatPrice } from '../game/modes'
 import { colorForSlot } from '../game/palette'
 import { seriesWalks } from '../game/series'
+import {
+  AxisGrid,
+  CHART_WIDTH,
+  OpeningLine,
+  PLOT_HEIGHT,
+  valueAxis,
+  valueFormat,
+} from './chartAxis'
 import { smoothPath } from './curve'
 import type { Mode, RankedEntry, Round } from '../game/types'
 
@@ -28,8 +35,6 @@ export interface MoveLinesProps {
 }
 
 const PAD = { top: 14, right: 62, bottom: 22, left: 44 }
-const PLOT_H = 190
-const WIDTH = 560
 
 export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLinesProps) {
   const [hovered, setHovered] = useState<string | null>(null)
@@ -47,69 +52,47 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
   const rows = Math.max(...walks.map((walk) => walk.values.length - 1))
   const dayBreaks = walks[0].dayBreaks
 
-  const all = walks.flatMap((walk) => walk.values)
-  const low = Math.min(...all)
-  const high = Math.max(...all)
-  // Never a zero-height axis, and always a little air above and below.
-  const pad = Math.max((high - low) * 0.12, 0.5)
-  const min = low - pad
-  const max = high + pad
-
-  const plotW = WIDTH - PAD.left - PAD.right
+  const axis = valueAxis(
+    walks.flatMap((walk) => walk.values),
+    PAD.top,
+  )
+  const y = axis.y
+  const plotW = CHART_WIDTH - PAD.left - PAD.right
   const x = (row: number) => PAD.left + (row / Math.max(1, rows)) * plotW
-  const y = (value: number) => PAD.top + (1 - (value - min) / (max - min)) * PLOT_H
-  const height = PAD.top + PLOT_H + PAD.bottom
-
-  const label = (value: number) => (mode === 'stock' ? formatPrice(value) : formatSlots(value))
+  const height = PAD.top + PLOT_HEIGHT + PAD.bottom
+  const label = valueFormat(mode)
 
   return (
     <figure className="chart">
       <div className="chart-plot">
         <svg
-          viewBox={`0 0 ${WIDTH} ${height}`}
+          viewBox={`0 0 ${CHART_WIDTH} ${height}`}
           role="img"
           aria-label={`Each player's ${mode === 'stock' ? 'price' : 'position'} over ${rows} rows${
             dayBreaks.length > 0 ? ` across ${dayBreaks.length + 1} sessions` : ''
           }`}
         >
-          {[max, (max + min) / 2, min].map((value) => (
-            <g key={value}>
-              <line
-                x1={PAD.left}
-                x2={WIDTH - PAD.right}
-                y1={y(value)}
-                y2={y(value)}
-                className="chart-grid"
-              />
-              <text x={PAD.left - 7} y={y(value) + 3.5} className="chart-tick chart-tick-y">
-                {label(value)}
-              </text>
-            </g>
-          ))}
+          <AxisGrid axis={axis} left={PAD.left} right={CHART_WIDTH - PAD.right} format={label} />
 
           {/* Where one session ended and the next opened. Without these the line
               is a single long walk, and the days it took to get there — the whole
               reason the series ran on — are invisible. */}
           {dayBreaks.map((row, index) => (
             <g key={row} className="chart-day-break">
-              <line x1={x(row)} x2={x(row)} y1={PAD.top} y2={PAD.top + PLOT_H} />
+              <line x1={x(row)} x2={x(row)} y1={PAD.top} y2={PAD.top + PLOT_HEIGHT} />
               <text x={x(row) + 4} y={PAD.top + 9} className="chart-tick">
                 Day {index + 2}
               </text>
             </g>
           ))}
 
-          {/* The opening price, when everyone shares one: the line that says who
-              finished up and who finished down. */}
-          {openPrice !== null && (
-            <line
-              x1={PAD.left}
-              x2={WIDTH - PAD.right}
-              y1={y(mode === 'stock' ? openPrice : 0)}
-              y2={y(mode === 'stock' ? openPrice : 0)}
-              className="chart-open-line"
-            />
-          )}
+          <OpeningLine
+            axis={axis}
+            openPrice={openPrice}
+            mode={mode}
+            left={PAD.left}
+            right={CHART_WIDTH - PAD.right}
+          />
 
           {walks.map(({ entry, values }) => {
             const path = smoothPath(values.map((value, row) => ({ x: x(row), y: y(value) })))
@@ -169,11 +152,4 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
       </div>
     </figure>
   )
-}
-
-/** Slots from the centre, for Black Swan where there is no price. */
-function formatSlots(value: number): string {
-  const rounded = Math.round(value * 10) / 10
-  if (rounded === 0) return '0'
-  return `${rounded > 0 ? '+' : '−'}${Math.abs(rounded)}`
 }

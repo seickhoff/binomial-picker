@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { formatOdds } from '../game/binomial'
 import { MODES, formatChange, formatPrice, trendOf } from '../game/modes'
 import { commonOpenPrice, rankRound, settlementOf } from '../game/scoring'
-import { seriesOf, seriesTotals } from '../game/series'
+import { seriesCandles, seriesOf, seriesTotals } from '../game/series'
 import { useGame } from '../game/store'
 import type { Mode, RankedEntry } from '../game/types'
+import { CandleChart } from './CandleChart'
 import { DistributionChart } from './DistributionChart'
 import { MoveLines } from './MoveLines'
 import { PlayerDot, PlayerName } from './PlayerTag'
@@ -26,6 +27,7 @@ import {
 const CHART_VIEWS = [
   { id: 'distribution', label: 'Distribution' },
   { id: 'moves', label: 'Every move' },
+  { id: 'candles', label: 'Candles' },
 ] as const
 
 export function ResultsPanel() {
@@ -146,7 +148,15 @@ export function ResultsPanel() {
       </div>
 
       {chartOpen &&
-        (chartView === 'moves' ? (
+        (chartView === 'candles' ? (
+          <CandleChart
+            entries={ranked}
+            candles={seriesCandles(sessions, mode)}
+            mode={mode}
+            openPrice={seriesOpenPrice}
+            labels={lineLabels(mode, players)}
+          />
+        ) : chartView === 'moves' ? (
           <MoveLines
             entries={ranked}
             sessions={sessions}

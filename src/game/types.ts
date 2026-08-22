@@ -14,6 +14,8 @@ export type ChartView =
   | 'distribution'
   /** How each player's price actually moved, row by row. */
   | 'moves'
+  /** One candle per player: where each opened, closed, and reached either way. */
+  | 'candles'
 
 /** How a round is scored. The board itself is identical either way. */
 export type Mode =

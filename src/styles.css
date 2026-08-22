@@ -1314,6 +1314,78 @@ input[type='range']:focus-visible {
   gap: 8px;
 }
 
+/* ---------- Candles ---------- */
+
+/*
+ * Green up, red down — the reserved status pair, used for the one thing it is
+ * reserved for.
+ *
+ * These are the only marks in the app where a player's own colour is *not* the
+ * fill, and that is deliberate: the palette holds a green, an emerald and a
+ * coral, so identity colours on a candle body get read as gain and loss. On a
+ * candlestick that reading is not a mistake, so the chart follows it and puts
+ * identity in the label instead.
+ *
+ * Direction is never colour alone: the body sits above or below the opening line,
+ * and the hovered tooltip spells out all four figures.
+ */
+.candle-wick,
+.candle-body {
+  stroke-width: 1.5;
+}
+
+.candle-wick[data-trend='up'],
+.candle-body[data-trend='up'] {
+  stroke: var(--gain);
+  fill: var(--gain);
+}
+
+.candle-wick[data-trend='down'],
+.candle-body[data-trend='down'] {
+  stroke: var(--loss);
+  fill: var(--loss);
+}
+
+/* Opened and closed level: no direction to report. */
+.candle-wick[data-trend='flat'],
+.candle-body[data-trend='flat'] {
+  stroke: var(--ink-muted);
+  fill: var(--ink-muted);
+}
+
+.candle-wick {
+  stroke-linecap: round;
+}
+
+/* The player's colour, set inline, so the type selector must not set `fill`. */
+.candle-label {
+  font-family: var(--font-tape);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.candle-label.is-winner {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.candle,
+.candle-wick,
+.candle-body {
+  transition: opacity 120ms ease;
+}
+
+.candle.is-dimmed {
+  opacity: 0.25;
+}
+
+/* Invisible, and a whole lane wide, so a thin candle is still easy to point at. */
+.candle-hit {
+  fill: transparent;
+}
+
 /* Where one session handed over to the next, on the moves chart. */
 .chart-day-break line {
   stroke: rgba(210, 165, 60, 0.45);

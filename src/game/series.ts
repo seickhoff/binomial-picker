@@ -69,6 +69,34 @@ function flipsIn(session: Round, playerId: string): readonly number[] {
   return session.landings.find((landing) => landing.playerId === playerId)?.flips ?? []
 }
 
+export interface Candle {
+  readonly playerId: string
+  /** Where the series opened, and where it ended. */
+  readonly open: number
+  readonly close: number
+  /** The best and worst the price ever got to on the way. */
+  readonly high: number
+  readonly low: number
+}
+
+/**
+ * Each player's series as one candle.
+ *
+ * A candlestick wants four numbers and a walk has exactly them: it opened
+ * somewhere, it closed somewhere, and in between it reached a best and a worst.
+ * Nothing is aggregated or bucketed — the high is simply the highest the price
+ * actually was, which is the one thing the line chart makes you trace to find.
+ */
+export function seriesCandles(sessions: readonly Round[], mode: Mode): Candle[] {
+  return seriesWalks(sessions, mode).map(({ playerId, values }) => ({
+    playerId,
+    open: values[0],
+    close: values[values.length - 1],
+    high: Math.max(...values),
+    low: Math.min(...values),
+  }))
+}
+
 export interface SeriesTotals {
   /** Rows crossed across the whole series. */
   readonly rows: number
