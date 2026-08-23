@@ -55,30 +55,116 @@ export function valueFormat(mode: Mode): (value: number) => string {
   return mode === 'stock' ? formatPrice : formatSlots
 }
 
-/** Three gridlines — top, middle, bottom — each labelled with its value. */
+/**
+ * Rungs the gridlines may sit on, finest first, as [minor, major].
+ *
+ * The ladder is anchored at zero rather than at the data, which is the whole point
+ * of it: a line at $100.25 is at $100.25 whatever the field did, so the reader
+ * measures against round money instead of against three padded numbers that change
+ * every round. It also means $100 — a whole dollar, and where every first session
+ * opens — is a strong line whenever the axis reaches it, which on a first session
+ * it always does, because that is where every walk began.
+ *
+ * Every value here is exactly representable in binary, so a multiple of a minor
+ * rung lands exactly on a major one and the emphasis never wobbles.
+ */
+const PRICE_RUNGS = [
+  [0.25, 1],
+  [0.5, 2],
+  [1, 5],
+  [2.5, 10],
+  [5, 20],
+  [10, 50],
+  [25, 100],
+] as const
+
+/** The same, for a board measured in slots, where a quarter of a slot is nothing. */
+const SLOT_RUNGS = [
+  [1, 5],
+  [2, 10],
+  [5, 25],
+  [10, 50],
+  [25, 100],
+] as const
+
+/** The least room a faint line needs, in plot pixels, before the grid reads as a wash. */
+const MIN_MINOR_GAP = 9
+
+/** A gridline, and whether it carries the emphasis and the label. */
+export interface GridLine {
+  readonly value: number
+  readonly major: boolean
+}
+
+/**
+ * The gridlines for an axis: every minor rung it spans, the round ones marked.
+ *
+ * Both modes are guaranteed at least one major line, so the axis is never
+ * unlabelled. In stock mode the majors are whole dollars and the axis always spans
+ * at least a dollar, and any interval that wide contains a whole one. In slots mode
+ * every walk starts from the centre, so zero is always on the axis — and zero is a
+ * multiple of everything.
+ */
+export function gridLines(axis: ValueAxis, mode: Mode): GridLine[] {
+  const [minor, major] = rungFor(mode, axis.max - axis.min)
+  const lines: GridLine[] = []
+
+  for (let step = Math.ceil(axis.min / minor); step <= Math.floor(axis.max / minor); step++) {
+    const value = step * minor
+    // Tolerant of sign, not of arithmetic: -5 % 5 is -0, and every rung is exact.
+    lines.push({ value, major: Math.abs(value % major) === 0 })
+  }
+
+  return lines
+}
+
+/** The finest rung whose minor lines still stand apart at this height. */
+function rungFor(mode: Mode, span: number): readonly [number, number] {
+  const rungs = mode === 'stock' ? PRICE_RUNGS : SLOT_RUNGS
+  const roomy = rungs.find(([minor]) => (PLOT_HEIGHT * minor) / span >= MIN_MINOR_GAP)
+  return roomy ?? rungs[rungs.length - 1]
+}
+
+/**
+ * The horizontal grid: a faint line every minor rung, a stronger, labelled one on
+ * every round value.
+ *
+ * Only the majors are labelled. The minors are there to be measured against, not
+ * read, and a number on each of twenty of them is a wall of digits.
+ */
 export function AxisGrid({
   axis,
   left,
   right,
-  format,
+  mode,
 }: {
   axis: ValueAxis
   left: number
   right: number
-  format: (value: number) => string
+  mode: Mode
 }) {
+  const format = valueFormat(mode)
+
   return (
     <>
-      {[axis.max, (axis.max + axis.min) / 2, axis.min].map((value) => (
+      {gridLines(axis, mode).map(({ value, major }) => (
         <g key={value}>
-          <line x1={left} x2={right} y1={axis.y(value)} y2={axis.y(value)} className="chart-grid" />
-          <text
-            x={left - TICK_GAP}
-            y={axis.y(value) + TICK_BASELINE}
-            className="chart-tick chart-tick-y"
-          >
-            {format(value)}
-          </text>
+          <line
+            x1={left}
+            x2={right}
+            y1={axis.y(value)}
+            y2={axis.y(value)}
+            className={major ? 'chart-grid is-major' : 'chart-grid is-minor'}
+          />
+          {major && (
+            <text
+              x={left - TICK_GAP}
+              y={axis.y(value) + TICK_BASELINE}
+              className="chart-tick chart-tick-y"
+            >
+              {format(value)}
+            </text>
+          )}
         </g>
       ))}
     </>

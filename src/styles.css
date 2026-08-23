@@ -1044,6 +1044,21 @@ input[type='range']:focus-visible {
   stroke-width: 1;
 }
 
+/*
+ * Two weights of gridline, for a grid on a fixed ladder rather than on the data.
+ *
+ * There are a lot more minor lines than the three this chart used to draw, so they
+ * step back: at full strength, twenty of them stop being a grid and become a
+ * texture behind the marks. The round values keep the weight, and the label.
+ */
+.chart-grid.is-minor {
+  opacity: 0.5;
+}
+
+.chart-grid.is-major {
+  stroke: var(--baseline);
+}
+
 .chart-baseline {
   stroke: var(--baseline);
   stroke-width: 1;
@@ -1211,9 +1226,15 @@ input[type='range']:focus-visible {
   stroke-width: 12;
 }
 
-/* Where everyone started, so up and down are readable at a glance. */
+/*
+ * Where everyone started, so up and down are readable at a glance.
+ *
+ * Brighter than the grid it lies on, not the same weight. On a first session the
+ * open is $100 — a round dollar, so a major gridline runs along exactly the same y,
+ * and at the grid's own colour the dashes vanished underneath it.
+ */
 .chart-open-line {
-  stroke: var(--baseline);
+  stroke: var(--ink-muted);
   stroke-width: 1;
   stroke-dasharray: 3 4;
 }
@@ -1291,21 +1312,59 @@ input[type='range']:focus-visible {
   color: var(--ink-primary);
 }
 
+.results-table tr.is-winner {
+  --row-accent: var(--gain);
+}
+
+.results-table tr.is-loser {
+  --row-accent: var(--loss);
+}
+
 .results-table tr.is-winner td {
-  background: rgba(12, 163, 12, 0.11);
+  background: color-mix(in srgb, var(--row-accent) 11%, transparent);
   font-weight: 620;
 }
 
-.results-table tr.is-winner td:first-child {
-  box-shadow: inset 2px 0 0 rgba(12, 163, 12, 0.6);
-}
-
+/* Lighter than the winner's at the same alpha, red carries further than green. */
 .results-table tr.is-loser td {
-  background: rgba(208, 59, 59, 0.09);
+  background: color-mix(in srgb, var(--row-accent) 9%, transparent);
 }
 
+/*
+ * A gutter down the rank column, wide enough to hold the accent bar.
+ *
+ * It belongs to the whole column rather than to the two rows that draw a bar in
+ * it: given only to those, the rank digits would step sideways on exactly the two
+ * rows the eye is already drawn to.
+ */
+.results-table th:first-child,
+.results-table td:first-child {
+  padding-left: 11px;
+}
+
+/*
+ * The accent itself — one bar, two colours.
+ *
+ * Positioned rather than the inset box-shadow this was, because a shadow can only
+ * fill its cell edge to edge: it ran into the hairline above and below and read as
+ * a seam in the table's own border. Inset from both and rounded, it reads as a
+ * mark on a row, which is what it is.
+ */
+.results-table tr.is-winner td:first-child,
 .results-table tr.is-loser td:first-child {
-  box-shadow: inset 2px 0 0 rgba(208, 59, 59, 0.55);
+  position: relative;
+}
+
+.results-table tr.is-winner td:first-child::before,
+.results-table tr.is-loser td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--row-accent);
 }
 
 .actions {
@@ -1357,18 +1416,32 @@ input[type='range']:focus-visible {
   stroke-linecap: round;
 }
 
-/* The player's colour, set inline, so the type selector must not set `fill`. */
+/*
+ * Plain white, unlike every other chart label in the app.
+ *
+ * The candles carry the only two colours this chart is trying to say anything
+ * with. Labelling them in the player palette as well put a third scheme
+ * underneath — greens and reds among them — with nothing to tell the eye which
+ * of the three to read. The symbol is doing the identifying, and it does not
+ * need a colour to do it.
+ */
 .candle-label {
+  fill: var(--ink-primary);
   font-family: var(--font-tape);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
+/*
+ * The winner's label, picked out by weight alone.
+ *
+ * It was underlined too, which in a chart reads as a link — and the mark is
+ * redundant anyway: the candles are ranked, so the winner is already the leftmost
+ * one. Weight is enough of a nudge for something the order has said.
+ */
 .candle-label.is-winner {
   font-weight: 800;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .candle,

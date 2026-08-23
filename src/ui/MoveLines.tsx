@@ -72,7 +72,7 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
             dayBreaks.length > 0 ? ` across ${dayBreaks.length + 1} sessions` : ''
           }`}
         >
-          <AxisGrid axis={axis} left={PAD.left} right={CHART_WIDTH - PAD.right} format={label} />
+          <AxisGrid axis={axis} left={PAD.left} right={CHART_WIDTH - PAD.right} mode={mode} />
 
           {/* Where one session ended and the next opened. Without these the line
               is a single long walk, and the days it took to get there — the whole

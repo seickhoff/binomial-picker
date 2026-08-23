@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { trendOf } from '../game/modes'
-import { colorForSlot } from '../game/palette'
 import type { Candle } from '../game/series'
 import type { Mode, RankedEntry } from '../game/types'
 import {
@@ -28,7 +27,8 @@ import {
  * palette contains a green, an emerald and a coral, so identity colours on the
  * bodies were being read as gain and loss by anyone who has seen a price chart —
  * correctly, because that is what green and red mean on a candle. Identity moved
- * to the label under each candle, which is where it can be unambiguous.
+ * to the label under each candle: the symbol itself, in plain white, so the only
+ * colours in the chart are the two that mean something.
  */
 export interface CandleChartProps {
   /** Ranked best first; the order the candles are drawn in. */
@@ -88,7 +88,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
             mode === 'stock' ? 'price' : 'position'
           } for each player, best first`}
         >
-          <AxisGrid axis={axis} left={PAD.left} right={CHART_WIDTH - PAD.right} format={label} />
+          <AxisGrid axis={axis} left={PAD.left} right={CHART_WIDTH - PAD.right} mode={mode} />
           <OpeningLine
             axis={axis}
             openPrice={openPrice}
@@ -144,8 +144,9 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
             )
           })}
 
-          {/* Identity lives here, in each player's own colour — the bodies are
-              saying which way the price went and cannot say both. */}
+          {/* Identity lives here, as the symbol. White, not the player's colour:
+              the candles are already green and red, and a third colour scheme
+              underneath them is one the eye has to be told how to read. */}
           {drawn.map(({ entry }, index) => {
             const centre = centreOf(index)
             const dimmed = hovered !== null && hovered !== entry.player.id
@@ -157,7 +158,6 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
                 className={entry.isWinner ? 'candle-label is-winner' : 'candle-label'}
                 textAnchor={turned ? 'end' : 'middle'}
                 transform={turned ? `rotate(-45 ${centre} ${labelY})` : undefined}
-                fill={colorForSlot(entry.player.slot).hex}
                 opacity={dimmed ? 0.25 : 1}
               >
                 {labels.get(entry.player.id)}
