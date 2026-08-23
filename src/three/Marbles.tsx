@@ -125,16 +125,29 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
     [geo, size.width, size.height],
   )
 
-  // Planned once per round and held in a ref keyed by runToken, so a repeat
-  // render reuses the same plan — re-planning mid-round would change outcomes
-  // that have already been recorded.
+  /*
+   * Planned when the drop starts, not when the session opens.
+   *
+   * Held in a ref keyed by runToken, so a repeat render reuses the same plan —
+   * re-planning mid-round would change outcomes already recorded. And built no
+   * earlier than the release, so the last round's marbles stay in their slots
+   * while the next session's placard is up: they give way to the new field when
+   * it is actually dropped, not a placard beforehand.
+   */
   const plan = useRef<{ token: number; round: RoundPlan } | null>(null)
-  if (plan.current?.token !== runToken) {
+  if (phase === 'running' && plan.current?.token !== runToken) {
     plan.current = { token: runToken, round: planRound(entrants, geo, round.plan) }
   }
-  const { paths, order } = plan.current.round
 
-  const [timedReleases, setTimedReleases] = useState(0)
+  /*
+   * How many of the planned marbles have been let go, and of which plan.
+   *
+   * Tied together because they change at different moments: the plan is replaced
+   * during a render and the count is reset by an effect afterwards, so a count
+   * left over from the previous round would briefly be applied to the new one —
+   * a frame of new marbles appearing at the funnel before the drop begins.
+   */
+  const [released, setReleased] = useState({ token: 0, count: 0 })
 
   // Child cleanups run first, so this clears anything they left behind.
   useEffect(
@@ -146,19 +159,32 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
   )
 
   useEffect(() => {
-    setTimedReleases(0)
     // Held until the session actually opens. Starting the stagger under the
     // placard would drop the first marbles behind it, and they would be halfway
     // down by the time it cleared.
     if (phase !== 'running') return
+
+    setReleased({ token: runToken, count: 0 })
     const gap = staggerFor(entrants.length, dropMode)
     const timers = entrants.map((_, i) =>
-      window.setTimeout(() => setTimedReleases((n) => Math.max(n, i + 1)), i * gap),
+      window.setTimeout(
+        () =>
+          setReleased((seen) =>
+            seen.token === runToken
+              ? { token: runToken, count: Math.max(seen.count, i + 1) }
+              : seen,
+          ),
+        i * gap,
+      ),
     )
     return () => timers.forEach((t) => window.clearTimeout(t))
   }, [dropMode, entrants.length, runToken, phase])
 
-  if (phase === 'setup' || phase === 'opening') return null
+  // Setup clears the board; nothing has been planned before the first drop.
+  if (phase === 'setup' || !plan.current) return null
+
+  const { paths, order } = plan.current.round
+  const timedReleases = released.token === plan.current.token ? released.count : 0
 
   const spread = entrants.length > 1 ? DEPTH_SPREAD : 0
 

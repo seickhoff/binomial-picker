@@ -36,8 +36,14 @@ const PARTIALS = [
   { ratio: 6.8, share: 0.14, decay: 0.1 },
 ]
 
-/** Strike note. A hand bell rung over a crowd, not a cathedral. */
-const PITCH = 660
+/**
+ * Strike note: F♯, because that is what the real bell rings.
+ *
+ * F♯5 — 739.99Hz in equal temperament — which keeps the register a hand bell has
+ * over a crowd rather than a cathedral's. Every partial below is a ratio of this
+ * one number, so the whole bell transposes together if the octave is ever wrong.
+ */
+const PITCH = 739.99
 /** How long one strike rings on, in seconds. */
 const RING = 1.5
 /**
