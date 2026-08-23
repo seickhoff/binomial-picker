@@ -62,7 +62,29 @@ export interface DropPath {
 
 /** Time to fall `drop` units when thrown upward at `vy0`. */
 function fallTime(drop: number, vy0: number): number {
-  return (vy0 + Math.sqrt(vy0 * vy0 + 2 * DROP_GRAVITY * drop)) / DROP_GRAVITY
+  /*
+   * The discriminant cannot go negative while the geometry holds, and this clamp
+   * is here because when it did, the consequence was silent and total: a negative
+   * fall gave a NaN duration, which made every sampled position NaN, which made
+   * the marble simply not appear. A marble landing at the wrong moment is a bug
+   * you can see and fix; one that vanishes looks like it was never dealt in.
+   */
+  const reach = Math.max(0, vy0 * vy0 + 2 * DROP_GRAVITY * drop)
+  return (vy0 + Math.sqrt(reach)) / DROP_GRAVITY
+}
+
+/**
+ * How many marbles a bin can stack before the pile reaches the last peg row.
+ *
+ * A bin is not bottomless. Twenty marbles is eight units of marble, and a bin is
+ * about three deep — so on a shallow board with a full roster, a popular bin
+ * genuinely runs out of room. Which bin is popular is not a rare case either:
+ * four rows put a quarter of the field in the centre slot.
+ */
+export function binCapacity(geo: BoardGeometry): number {
+  const ceiling = contactY(geo.rows - 1, geo) - MARBLE_RADIUS
+  const floor = geo.floorY + MARBLE_RADIUS
+  return Math.max(1, Math.floor((ceiling - floor) / (MARBLE_RADIUS * 2)) + 1)
 }
 
 /** Where a marble sits when resting on a peg in `row`. */
@@ -104,7 +126,14 @@ export function buildDropPath(geo: BoardGeometry, options: BuildDropOptions): Dr
   const netAfter = [0]
   for (const flip of flips) netAfter.push(netAfter[netAfter.length - 1] + flip)
 
-  const stackIndex = reserveSlot ? reserveSlot(bin) : 0
+  /*
+   * Held to what the bin can hold: past that the pile shares its top slot and the
+   * marbles visibly heap, which is what an overfull bin does. The alternative was
+   * a marble resting above the pegs it fell through, and the arithmetic for that
+   * is a fall of negative height.
+   */
+  const claimed = reserveSlot ? reserveSlot(bin) : 0
+  const stackIndex = Math.min(claimed, binCapacity(geo) - 1)
   const restX = geo.binCenters[bin]
   const restY = geo.floorY + MARBLE_RADIUS + stackIndex * MARBLE_RADIUS * 2
 

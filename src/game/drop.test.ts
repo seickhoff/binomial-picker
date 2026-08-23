@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDropPath, planDrops, samplePath } from './drop'
+import { binCapacity, buildDropPath, planDrops, samplePath } from './drop'
 import { MARBLE_RADIUS, boardGeometry } from './geometry'
 
 const SAMPLES = 20_000
@@ -94,13 +94,17 @@ describe('planning a whole round', () => {
       for (const path of paths) {
         byBin.set(path.bin, [...(byBin.get(path.bin) ?? []), path.restY])
       }
+      const capacity = binCapacity(geo)
       for (const heights of byBin.values()) {
         const sorted = [...heights].sort((a, b) => a - b)
         sorted.forEach((restY, slot) => {
-          expect(restY).toBeCloseTo(geo.floorY + MARBLE_RADIUS + slot * MARBLE_RADIUS * 2, 10)
+          // Its own slot until the bin is full, and the top slot thereafter.
+          const filled = Math.min(slot, capacity - 1)
+          expect(restY).toBeCloseTo(geo.floorY + MARBLE_RADIUS + filled * MARBLE_RADIUS * 2, 10)
         })
-        // No two marbles in one bin share a height.
-        expect(new Set(sorted.map((h) => h.toFixed(6))).size).toBe(sorted.length)
+        // Distinct heights for as many as the bin can actually hold.
+        const stacked = sorted.slice(0, capacity)
+        expect(new Set(stacked.map((h) => h.toFixed(6))).size).toBe(stacked.length)
       }
     }
   })
@@ -112,6 +116,41 @@ describe('planning a whole round', () => {
       expect(path.bin).toBeGreaterThanOrEqual(0)
       expect(path.bin).toBeLessThanOrEqual(geo.rows)
       expect(samplePath(path, path.duration).y).toBeCloseTo(path.restY, 10)
+    }
+  })
+
+  it('lands a whole field piled into one bin, without losing any of it', () => {
+    /*
+     * Regression, and a bad one. A bin holds about eight marbles; a twenty-player
+     * board can easily put ten in the same one, and the tenth used to come to
+     * rest above the last peg row. Falling a negative distance made the duration
+     * NaN, which made every position NaN, which made the marble not draw at all —
+     * so a marble was simply missing, with nothing on screen to say why.
+     */
+    const rows = geo.rows
+    const allToTheRight = Array.from({ length: 20 }, () => Array.from({ length: rows }, () => 1))
+    const paths = planDrops(geo, allToTheRight)
+    const ceiling = geo.floorY + MARBLE_RADIUS + (binCapacity(geo) - 1) * MARBLE_RADIUS * 2
+
+    expect(paths).toHaveLength(20)
+    for (const path of paths) {
+      expect(Number.isFinite(path.duration)).toBe(true)
+      expect(Number.isFinite(path.restY)).toBe(true)
+      expect(samplePath(path, path.duration).y).toBeCloseTo(path.restY, 10)
+      // Nothing rests above what the bin can hold.
+      expect(path.restY).toBeLessThanOrEqual(ceiling + 1e-9)
+    }
+  })
+
+  it('keeps every peg-to-peg fall a real number, at every depth', () => {
+    for (const rows of [4, 10, 24]) {
+      const board = boardGeometry(rows)
+      const field = Array.from({ length: 20 }, () => Array.from({ length: rows }, () => -1))
+      for (const path of planDrops(board, field)) {
+        for (const segment of path.segments) {
+          expect(Number.isFinite(segment.duration), `${rows} rows`).toBe(true)
+        }
+      }
     }
   })
 
