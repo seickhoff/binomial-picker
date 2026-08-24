@@ -4,6 +4,7 @@ import type { PerspectiveCamera } from 'three'
 import type { BoardGeometry } from '../game/geometry'
 import { marbleFocus } from '../live/cameraFocus'
 import { useGame } from '../game/store'
+import { isCompact } from '../viewport'
 import { PITCH_DEG, shotFor, type Shot } from './framing'
 import { clamp, lerp } from './mathx'
 
@@ -25,6 +26,16 @@ export function CameraRig({ geo }: { geo: BoardGeometry }) {
   const aspect = size.width / size.height
 
   const shot = useMemo(() => shotFor(geo, aspect, size.height), [geo, aspect, size.height])
+  /*
+   * How far down the board the widening is finished.
+   *
+   * On a desk the two framings are barely a third apart, so where the move
+   * completes hardly shows. An upright phone has to widen nearly fivefold to fit a
+   * deep board across, and spreading that over the whole descent left the marbles
+   * arriving before the board did. Finishing it a little before the bins gives the
+   * drop a proper move out, and then a steady frame to land in.
+   */
+  const widenBy = isCompact(size.width, size.height) ? 0.95 : 1
   const framing = useRef({ y: shot.entryY, height: shot.closeHeight, settled: false })
 
   // A new board or viewport re-frames immediately instead of gliding.
@@ -34,7 +45,7 @@ export function CameraRig({ geo }: { geo: BoardGeometry }) {
 
   useFrame((_, dt) => {
     const { phase, overview } = useGame.getState()
-    const target = targetFraming(shot, phase, overview)
+    const target = targetFraming(shot, phase, overview, widenBy)
 
     if (framing.current.settled) {
       const easing = 1 - Math.exp(-FOLLOW_RATE * dt)
@@ -55,6 +66,8 @@ function targetFraming(
   shot: Shot,
   phase: string,
   overview: boolean,
+  /** Share of the descent the widening is spread over; see `widenBy`. */
+  widenBy: number,
 ): { y: number; height: number } {
   // Held space wins over everything, marbles included: it is a request to stop
   // following the action and look at the device.
@@ -75,8 +88,8 @@ function targetFraming(
   // Never drop below the finished framing, so the last of the descent glides
   // straight into it.
   const y = Math.max(focus.leadY * 0.62 + focus.meanY * 0.38, shot.endY)
-  // Widen as the marbles approach the bins.
-  const span = shot.entryY - shot.endY
+  // Widen as the marbles approach the bins, and be done by `widenBy` of the way.
+  const span = (shot.entryY - shot.endY) * widenBy
   const travelled = clamp((shot.entryY - y) / (span || 1), 0, 1)
   return { y, height: lerp(shot.closeHeight, shot.wideHeight, travelled * travelled) }
 }

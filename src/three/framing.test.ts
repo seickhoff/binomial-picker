@@ -93,8 +93,62 @@ describe.each(VIEWPORTS)('framing at $width×$height', ({ width, height }) => {
       const bottom = frameEdgeY(shot.endY, shot.wideHeight, shot.halfFovTan, -1)
       const gap = geo.floorY - bottom
       expect(gap, `${rows} rows`).toBeGreaterThan(0)
-      // A margin, not a chasm: a fraction of the framed height.
-      expect(gap, `${rows} rows`).toBeLessThan(shot.wideHeight * 0.25)
+      // A margin, not a chasm — but only while the shot is anchored at all. A
+      // frame roomier than the device has surplus by definition, and centres it.
+      if (shot.wideHeight < geo.height) {
+        expect(gap, `${rows} rows`).toBeLessThan(shot.wideHeight * 0.25)
+      }
+    }
+  })
+
+  /*
+   * The upright-phone case, and the one place the two rules differ.
+   *
+   * Fitting an 11-unit board across a 390px-wide screen takes 27 units of height
+   * for a board 15 tall. Anchored to the bottom, all 12 units of surplus went above
+   * it: the board sat in the lower half with its bins jammed into the bottom edge
+   * and a void over the funnel.
+   */
+  it('centres the finished shot when the frame is roomier than the device', () => {
+    for (const { rows, geo, shot } of shots) {
+      if (shot.wideHeight < geo.height) continue
+      expect(shot.endY, `${rows} rows`).toBeCloseTo(geo.centerY)
+    }
+  })
+
+  it('still hangs it off the bottom when the frame is the tighter of the two', () => {
+    for (const { rows, geo, shot } of shots) {
+      if (shot.wideHeight >= geo.height) continue
+      // Every desk-shaped window lands here, and must keep landing here.
+      expect(shot.endY, `${rows} rows`).toBeLessThan(geo.centerY)
+    }
+  })
+})
+
+/**
+ * The guard on the two rules that only bite on a narrow window: a desk is framed
+ * exactly as it was before either of them existed.
+ */
+describe('a landscape window', () => {
+  const LANDSCAPE = [
+    { width: 1600, height: 900 },
+    { width: 1440, height: 900 },
+    { width: 2560, height: 800 },
+    { width: 844, height: 390 },
+  ]
+
+  it.each(LANDSCAPE)('centres only the boards that fit, at $width×$height', (viewport) => {
+    for (const rows of ALL_ROWS) {
+      const geo = boardGeometry(rows)
+      const shot = shotFor(geo, viewport.width / viewport.height, viewport.height)
+
+      /*
+       * The bins alone set a floor of nine units on the closing frame, which is
+       * taller than a four-row board — so the shallowest two boards fit inside
+       * their own closing shot on any window, and are centred in it. Everything
+       * from six rows up is hung off the bottom edge, exactly as it always was.
+       */
+      expect(shot.wideHeight >= geo.height, `${rows} rows`).toBe(rows <= 5)
     }
   })
 })

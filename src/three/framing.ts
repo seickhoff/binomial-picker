@@ -122,7 +122,7 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
   const halfFovTan = Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180)
 
   // The funnel plus the first few rows of pegs.
-  const closeHeight = geo.topY - geo.apexY + CLOSE_ROWS * ROW_GAP
+  const funnelShot = geo.topY - geo.apexY + CLOSE_ROWS * ROW_GAP
   /*
    * Enough to read every bin at the end — and never tighter than the opening, so
    * the shot only ever widens.
@@ -131,7 +131,22 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
    * settles it. Clamping the opening down to meet it instead would put the
    * lattice back off screen on exactly the deep boards this is here to fix.
    */
-  const wideHeight = Math.max(geo.binWallHeight * 3.4, (geo.width * 1.12) / aspect, closeHeight)
+  const wideHeight = Math.max(geo.binWallHeight * 3.4, (geo.width * 1.12) / aspect, funnelShot)
+  /*
+   * The opening is the funnel and the first rows of pegs, at every shape of window.
+   *
+   * It was briefly capped so it could never be more than half again tighter than
+   * the closing shot, to stop the name tags — sized once, against the closing frame
+   * — opening several times too large on a phone. That fixed the tags by taking the
+   * drop's whole zoom out of the deep boards: fitting a 24-row board across 390px
+   * takes 61 units of height at the end, and a frame 40 units tall at the funnel is
+   * already taller than the entire board, so the shot opened wide and stayed there.
+   *
+   * The tags are dealt with where they are drawn instead — on a narrow screen they
+   * are given a fixed pixel size rather than one derived from the framing — which
+   * leaves the camera free to do the thing it is for.
+   */
+  const closeHeight = funnelShot
 
   // The nearest, lowest corner the device draws: the bottom of the plinth's front
   // face, which the price ladder sits on rather than below.
@@ -152,7 +167,27 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
      * one sits on the bottom.
      */
     entryY: anchorTo(deviceTop, closeHeight, halfFovTan, viewportHeight, 1),
-    endY: anchorTo(deviceBottom, wideHeight, halfFovTan, viewportHeight, -1),
+    /*
+     * Anchored to the bottom while the frame is tighter than the device; centred
+     * on it once the frame is the roomier of the two.
+     *
+     * Hanging it off the bottom is right whenever something has to be cut: what
+     * goes off screen should be the far end, not the end the marbles are arriving
+     * at. But a phone held upright has to frame 27 units of height to fit an
+     * 11-unit board across, and a 15-unit board pinned to the bottom of that
+     * leaves a void above it taller than the board — the look-at lands above the
+     * top of the funnel, and the bins are pressed into the bottom edge, which on a
+     * phone is where the round bar is.
+     *
+     * Once everything fits there is no far end to sacrifice, so the device sits in
+     * the middle and the surplus splits evenly above and below it. The two agree at
+     * the crossover — a frame exactly as tall as the device is both anchored and
+     * centred — so nothing jumps as a window is resized past it.
+     */
+    endY:
+      wideHeight >= geo.height
+        ? geo.centerY
+        : anchorTo(deviceBottom, wideHeight, halfFovTan, viewportHeight, -1),
     /*
      * Centred on the device rather than hung off an edge, because for once the
      * whole thing is meant to be in view and there is no action to favour.
