@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { tickerSymbols } from './presenters'
-import type { Player } from '../game/types'
+import { tickerSymbols } from './symbols'
+import type { Player } from './types'
 
 function field(...names: string[]): Player[] {
   return names.map((name, slot) => ({ id: `p${slot + 1}`, slot, name, active: true }))
