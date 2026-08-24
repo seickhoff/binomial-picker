@@ -11,6 +11,7 @@ import { MoveLines } from './MoveLines'
 import { PlayerDot, PlayerName } from './PlayerTag'
 import { TapeQuote } from './TapeQuote'
 import { useDraggable } from './useDraggable'
+import { tickerSymbols } from '../game/symbols'
 import {
   autoSessionHint,
   bottomKicker,
@@ -18,7 +19,6 @@ import {
   heroFigure,
   rematchLabel,
   resultsTableCaption,
-  tickerSymbols,
   tieBreakLabel,
   topKicker,
   verdictDetail,

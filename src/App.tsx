@@ -2,8 +2,10 @@ import { useEffect } from 'react'
 import { GameCanvas } from './three/GameCanvas'
 import { Hud } from './ui/Hud'
 import { ResultsPanel } from './ui/ResultsPanel'
+import { RoundBar } from './ui/RoundBar'
 import { SessionPlacard } from './ui/SessionPlacard'
 import { SetupPanel } from './ui/SetupPanel'
+import { useCompactLayout } from './viewport'
 import { useSessionFlow } from './ui/useSessionFlow'
 import { TickerTape } from './ui/TickerTape'
 import { MODES } from './game/modes'
@@ -19,6 +21,7 @@ export default function App() {
   const mode = useGame((s) => s.mode)
   const backToSetup = useGame((s) => s.backToSetup)
   const setOverview = useGame((s) => s.setOverview)
+  const compact = useCompactLayout()
   const info = MODES[mode]
 
   /*
@@ -85,7 +88,10 @@ export default function App() {
   const tickerRunning = mode === 'stock' && phase !== 'setup'
 
   return (
-    <div className="app" data-mode={mode}>
+    // `data-ticker` is what the compact layout keys the tape's own row off: the
+    // nav is a row taller when there is a tape, and every panel below it is
+    // positioned off that height.
+    <div className="app" data-mode={mode} data-ticker={tickerRunning ? '' : undefined}>
       <GameCanvas />
 
       {/* Brand on the left, tape on the right. Always present, so nothing below
@@ -101,9 +107,13 @@ export default function App() {
       </header>
 
       {/* One panel at a time: the results table supersedes the live standings,
-          and a tall results card would otherwise collide with it. */}
+          and a tall results card would otherwise collide with it.
+
+          On a phone the running round shows a bar instead of the standings card,
+          which there covered the board it was reporting on. The choice lives here,
+          with the rest of what-goes-where, rather than inside either component. */}
       {phase === 'setup' && <SetupPanel />}
-      {(phase === 'opening' || phase === 'running') && <Hud />}
+      {(phase === 'opening' || phase === 'running') && (compact ? <RoundBar /> : <Hud />)}
       {phase === 'results' && <ResultsPanel />}
 
       {/* Over everything, including the standings: it is what the session is

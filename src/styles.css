@@ -234,11 +234,19 @@ body {
   will-change: transform;
 }
 
+/*
+ * Three spaces between quotes, one between a quote's own figures — counted in the
+ * tape's own units, since the face is fixed-pitch and 1ch is exactly one space.
+ *
+ * The padding has to match the gap: it is what separates the last quote of one
+ * copy of the strip from the first quote of the next, and the loop is seamless
+ * only if that join looks like every other one.
+ */
 .ticker-group {
   display: flex;
   flex: none;
-  gap: 34px;
-  padding-right: 34px;
+  gap: 3ch;
+  padding-right: 3ch;
 }
 
 /*
@@ -325,7 +333,7 @@ body {
 .ticker-item {
   display: inline-flex;
   align-items: baseline;
-  gap: 7px;
+  gap: 1ch;
   font-size: 14px;
 }
 
@@ -356,35 +364,6 @@ body {
   text-align: right;
 }
 
-/* Marks a stock that is still in the air. Always present, so opening and
-   closing a position never changes the row's width. */
-.ticker-live {
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--brass);
-  animation: ticker-pulse 1.1s ease-in-out infinite;
-}
-
-.ticker-item[data-closed='true'] .ticker-live {
-  visibility: hidden;
-  /* Hidden is not stopped: a `visibility: hidden` element goes on animating, so
-     a closed field left twenty invisible dots pulsing for as long as the results
-     were on screen. The box stays, to hold the row's width. */
-  animation: none;
-}
-
-@keyframes ticker-pulse {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 @keyframes ticker-scroll {
   from {
     transform: translateX(0);
@@ -395,8 +374,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticker-run,
-  .ticker-live {
+  .ticker-run {
     animation: none;
   }
 }
@@ -537,6 +515,16 @@ body {
   gap: 7px;
 }
 
+/*
+ * Holds the panel's last, decisive control. Nothing to see here on a desk — the
+ * button inside it is already full width, so a plain column changes nothing — and
+ * on a phone it is what the compact layout sticks to the bottom of the sheet.
+ */
+.panel-footer {
+  display: flex;
+  flex-direction: column;
+}
+
 .panel h2:not(.verdict-name) {
   margin: 0;
   font-size: 11px;
@@ -643,6 +631,73 @@ input[type='range']:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 4px;
   border-radius: 4px;
+}
+
+/* ---------- Volatility bands ---------- */
+
+/*
+ * Three ranges, each two sliders under its own heading.
+ *
+ * Dragged rather than typed. The store clamps a band as soon as it stops making
+ * sense — a high end below its low end draws from nothing — and against a typed
+ * field that meant a half-finished number was corrected out from under the cursor.
+ * A slider has no half-finished states.
+ */
+.bands {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+  padding: 6px 0 2px;
+}
+
+.band {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.band-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.band-name {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* The pair, which is what is actually being set — either end alone says little. */
+.band-range {
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-primary);
+}
+
+/*
+ * Slimmer than the row slider above them: there are six of these, and at the peg
+ * slider's height the section would be taller than the roster.
+ */
+.band-slider {
+  height: 14px;
+}
+
+.band-slider::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  box-shadow: 0 0 0 3px rgba(57, 135, 229, 0.2);
+}
+
+.band-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
 }
 
 /* ---------- Players ---------- */
@@ -947,6 +1002,63 @@ input[type='range']:focus-visible {
   color: var(--ink-secondary);
   font-variant-numeric: tabular-nums;
   font-size: 11.5px;
+}
+
+/* ---------- Round bar (the compact layout's standings) ---------- */
+
+/*
+ * What a running round shows on a phone instead of the standings card, pinned
+ * along the bottom edge — the one strip of the screen a Galton board has nothing
+ * in: the marbles are above it and the bins end short of it.
+ *
+ * Rendered only in the compact layout, but styled unconditionally: the component
+ * decides whether it exists, this decides how it looks, and a bar that turned up
+ * unstyled because the two disagreed by a pixel would be a poor trade for the
+ * indentation saved.
+ */
+.round-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  /* Fades into the scene rather than boxing itself off it: the board has to stay
+     the thing on screen, and a solid bar with an edge reads as another panel. */
+  background: linear-gradient(to top, rgba(5, 6, 11, 0.94), rgba(5, 6, 11, 0));
+}
+
+/* Takes the slack, and gives it back first: on the narrowest phones the buttons
+   keep their labels and the count loses its word. */
+.round-bar-count {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-secondary);
+}
+
+/* Over a lit 3D scene, so these carry their own surface — a ghost button on the
+   board is unreadable wherever a marble happens to be behind it. */
+.round-bar .btn {
+  flex: none;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: var(--surface-raised);
+  backdrop-filter: blur(14px);
+}
+
+/* The latched state of a toggle, in whichever mode's accent is playing. */
+.round-bar .btn[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--ink-primary);
 }
 
 /* ---------- Verdict ---------- */
@@ -1633,5 +1745,267 @@ input[type='range']:focus-visible {
 
   .verdict-name {
     font-size: 21px;
+  }
+}
+
+/* ---------- Compact layout ---------- */
+
+/*
+ * Phones, and anything held sideways.
+ *
+ * The same query `COMPACT_LAYOUT` in ui/viewport.ts asks in script — the two are
+ * written out separately because a media query cannot be shared between a
+ * stylesheet and a module, and they have to stay identical: script decides which
+ * components exist at this size, and this decides how they sit.
+ *
+ * Everything here is additive. A desk-sized window never enters this block, and
+ * nothing above it was changed to make room for it.
+ */
+@media (max-width: 700px), (max-height: 500px) {
+  /*
+   * Setup stops being a card and becomes the screen.
+   *
+   * As a card it was 320px of a 375px-wide phone with two scrolling boxes nested
+   * inside it — the roster within the card, the card within the viewport — and a
+   * drag that landed in the wrong one went nowhere, which is what put half the
+   * roster and most of the options out of reach. The sheet has exactly one
+   * scrolling box: itself.
+   */
+  .panel-setup {
+    top: var(--topnav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: none;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding-bottom: 0;
+    /* Opaque, and no backdrop blur: it covers the whole viewport, so there is
+       nothing behind it to see through — and a full-screen blur over a live 3D
+       canvas is a GPU cost paid every frame for an invisible effect. */
+    background: var(--surface-1);
+    backdrop-filter: none;
+  }
+
+  /* Both stop competing for the height; the sheet scrolls, they just stack. */
+  .panel-section-players,
+  .player-list {
+    flex: none;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .player-list {
+    gap: 8px;
+  }
+
+  /* The one control that must never scroll away. */
+  .panel-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    /* Out to the sheet's edges, past the padding it inherits. */
+    margin-inline: -14px;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+    background: var(--surface-1);
+    border-top: 1px solid var(--hairline);
+  }
+
+  /*
+   * Targets a fingertip can hit. Roughly 22px on the small controls and 34px on
+   * the tap-only ones, against the 15–24px they are on a desk, where a pointer is
+   * accurate to the pixel.
+   */
+  .player-row {
+    gap: 11px;
+  }
+
+  /* A fingertip's worth of grip, on a track that stays slim. */
+  .band-slider {
+    height: 30px;
+  }
+
+  .band-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+    margin-top: -10px;
+  }
+
+  .band-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .player-name {
+    padding: 10px 11px;
+    /*
+     * 16px is not a taste. Mobile Safari zooms the whole page in when a focused
+     * field's text is smaller than this, and it does not zoom back out — so a tap
+     * on a name left the board scaled up and half off screen.
+     */
+    font-size: 16px;
+  }
+
+  .player-active,
+  .toggle input {
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
+
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 19px;
+  }
+
+  .toggle {
+    gap: 11px;
+    padding-block: 5px;
+    font-size: 13.5px;
+  }
+
+  .segmented button {
+    padding: 11px 8px;
+    font-size: 13px;
+  }
+
+  .btn-ghost {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  /* A slider is dragged by its thumb, which at 16px is smaller than the finger
+     dragging it. The track keeps its weight; only the grip grows. */
+  input[type='range'] {
+    height: 36px;
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+    margin-top: -11px;
+  }
+
+  input[type='range']::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+  }
+
+  /*
+   * The tape gets a row of its own.
+   *
+   * Beside the brand it had about 180px on a phone: one clipped quote and half of
+   * the next, which is worse than no tape at all — a ticker that cannot show a
+   * whole symbol and price is just movement. Under the brand it has the width of
+   * the screen, and the marquee re-measures itself when it gets it.
+   *
+   * Only when there is a tape to place. Black Swan and the setup screen put one
+   * line of text there, which fits beside the brand, and handing them a second row
+   * would cost every panel below it the height for nothing.
+   */
+  .app[data-ticker] {
+    --topnav-height: 78px;
+  }
+
+  .app[data-ticker] .topnav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app[data-ticker] .topnav-brand {
+    /* Stretched across, and divided from the tape rather than from what was
+       beside it. */
+    align-self: stretch;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+    padding: 12px;
+  }
+
+  /*
+   * The verdict stacks instead of sitting in a row.
+   *
+   * On a desk the names sit at the left and the figure at the right, which is what
+   * a wide card is for. At 390px there is not room for both: the names took what
+   * was left after the quote and wrapped one to a line, and a tie made it worse —
+   * the more players are level, the narrower the figure they are level on gets.
+   * Stacked, the names have the full width and the quote has a line of its own.
+   */
+  .verdict-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /*
+   * Stretched on purpose. As a flex item left to size itself in a column it would
+   * take its max-content width — which means it would never wrap, and a tie among
+   * four would run off the side of the card instead.
+   */
+  .verdict-name {
+    align-self: stretch;
+    /* Fits the longest name a roster can hold — twenty characters — on one line
+       inside the card, so a name breaks across lines only if it is all capitals. */
+    font-size: 20px;
+    gap: 2px 12px;
+  }
+
+  /*
+   * The two ends of the field, side by side: best on the left, worst on the right.
+   *
+   * One under the other they took most of a phone's screen before the chart or the
+   * table got a look in — two kickers, two names, two quotes, two detail lines.
+   * Beside each other they cost half the height, and left-to-right is the same
+   * order the table underneath reads in.
+   *
+   * Not under 360px across, where half the card cannot hold a quote and stacking
+   * is the better answer. The layout is the grip's, since that is what holds both
+   * blocks: it is also the drag handle, and it stays one.
+   */
+  @media (min-width: 360px) {
+    .panel-grip {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 12px;
+      align-items: start;
+    }
+
+    .panel-grip-bar {
+      grid-column: 1 / -1;
+    }
+
+    /* The gap and a rule between the columns do the same job the horizontal rule
+       did between the rows, so only one of them is wanted. */
+    .verdict-rule {
+      display: none;
+    }
+
+    .verdict-rule + .verdict-block {
+      padding-left: 12px;
+      border-left: 1px solid var(--hairline);
+    }
+
+    /* Both come down to fit half a card: the quote to its tape-strip size, which
+       is the size the same figures scroll past at overhead. */
+    .verdict-name {
+      font-size: 17px;
+    }
+
+    .verdict-hero .tape-quote-large {
+      font-size: 12px;
+      gap: 6px;
+      padding: 4px 7px;
+    }
+
+    .verdict-figure {
+      font-size: 23px;
+    }
+
+    .verdict-detail {
+      font-size: 11.5px;
+    }
   }
 }
