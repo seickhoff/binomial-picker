@@ -416,10 +416,19 @@ body {
   gap: 12px;
 }
 
-/* The one section allowed to take the leftover height. */
+/*
+ * The one section allowed to take the leftover height.
+ *
+ * It keeps the automatic minimum size a flex item is born with — a floor of its
+ * own heading, its hint and the roster's two-row minimum. A `min-height: 0` here
+ * made it the only item in the column that could be squeezed to nothing, and a
+ * tall enough set of options did exactly that: the section collapsed, the list
+ * inside it held its 74px and spilled out over the sections below, so Stock
+ * Market's roster was drawn on top of "Settle until". Floored, the deficit it
+ * cannot absorb falls through to the card, which scrolls.
+ */
 .panel-section-players {
   flex: 1 1 auto;
-  min-height: 0;
 }
 
 .panel-hud {

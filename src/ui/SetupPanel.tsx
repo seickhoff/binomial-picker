@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { binomialPmf } from '../game/binomial'
 import { MAX_ROWS, MIN_ROWS } from '../game/geometry'
 import { MAX_VOLATILITY_CENTS, MODES, MODE_ORDER, VOLATILITY_MOODS } from '../game/modes'
@@ -94,6 +94,19 @@ export function SetupPanel() {
     return sortRoster
   }, [sortRoster])
 
+  /*
+   * A row inserted above the scroll position does not move the view — the list
+   * keeps its offset and the new field sits off the top edge, which on a desk is
+   * where the roster spends most of its time once it fills its box. So the list
+   * is sent back to the top along with it. Nothing to wait for: the offset is
+   * the list's own, not the new row's, so it can be set before React paints it.
+   */
+  const listRef = useRef<HTMLUListElement>(null)
+  const addAndReveal = () => {
+    addPlayer()
+    listRef.current?.scrollTo({ top: 0 })
+  }
+
   const playing = players.filter((p) => p.active)
   const enoughPlayers = playing.length >= MIN_PLAYERS
 
@@ -148,7 +161,7 @@ export function SetupPanel() {
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={addPlayer}
+            onClick={addAndReveal}
             disabled={players.length >= MAX_PLAYERS}
             title={
               players.length >= MAX_PLAYERS
@@ -160,7 +173,7 @@ export function SetupPanel() {
           </button>
         </div>
 
-        <ul className="player-list">
+        <ul className="player-list" ref={listRef}>
           {players.map((player) => {
             const color = colorForSlot(player.slot)
             return (

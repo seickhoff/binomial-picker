@@ -266,11 +266,21 @@ export const useGame = create<GameState>()(
       resetVolatility: () => set({ volatility: DEFAULT_VOLATILITY }),
       setOverview: (overview) => set({ overview }),
 
+      /*
+       * The newcomer joins at the top, next to the button that asked for them.
+       *
+       * Appended, the empty field arrived at the far end of a list that is
+       * already eleven rows and a scrollbar long — out of sight of the Add
+       * button, and on a phone a screen's worth of scrolling away. At the top it
+       * is the next thing under the finger that pressed Add. It does not stay
+       * there: the roster is filed by name, so the row moves to its place the
+       * moment the name is finished.
+       */
       addPlayer: () =>
         set((state) =>
           state.players.length >= MAX_PLAYERS
             ? state
-            : { players: [...state.players, makePlayer(lowestFreeSlot(state.players))] },
+            : { players: [makePlayer(lowestFreeSlot(state.players)), ...state.players] },
         ),
 
       removePlayer: (id) =>

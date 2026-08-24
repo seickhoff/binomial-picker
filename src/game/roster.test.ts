@@ -73,6 +73,22 @@ describe('the roster in the store', () => {
     ])
   })
 
+  it('puts a new player at the top, and files them once named', async () => {
+    const { useGame } = await loadGame()
+    const before = useGame.getState().players.length
+    useGame.getState().addPlayer()
+
+    const added = useGame.getState().players
+    expect(added).toHaveLength(before + 1)
+    // First in the list, where the Add button that made them is.
+    expect(added[0].name).toBe(`Player ${added[0].slot + 1}`)
+
+    useGame.getState().renamePlayer(added[0].id, 'Zoe')
+    useGame.getState().sortRoster()
+    const filedAway = useGame.getState().players
+    expect(filedAway[filedAway.length - 1].name).toBe('Zoe')
+  })
+
   it('keeps every colour with its player', async () => {
     const { useGame } = await loadGame()
     const before = useGame.getState().players
