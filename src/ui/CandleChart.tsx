@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { trendOf } from '../game/modes'
 import type { Candle } from '../game/series'
 import type { Mode, RankedEntry } from '../game/types'
@@ -10,6 +9,7 @@ import {
   valueAxis,
   valueFormat,
 } from './chartAxis'
+import { useChartPick } from './chartPick'
 
 /**
  * One candle per player, best first.
@@ -54,7 +54,7 @@ const TURN_LABELS_BELOW = 30
 const LABEL_DROP = 14
 
 export function CandleChart({ entries, candles, mode, openPrice, labels }: CandleChartProps) {
-  const [hovered, setHovered] = useState<string | null>(null)
+  const { picked, marks } = useChartPick<string>()
 
   const byId = new Map(candles.map((candle) => [candle.playerId, candle]))
   const drawn = entries
@@ -104,14 +104,13 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
             // Against its own open, which is only "against $100" on day one: after
             // hours every stock carries its own price in.
             const trend = trendOf(candle.close - candle.open)
-            const dimmed = hovered !== null && hovered !== entry.player.id
+            const dimmed = picked !== null && picked !== entry.player.id
 
             return (
               <g
                 key={entry.player.id}
                 className={dimmed ? 'candle is-dimmed' : 'candle'}
-                onPointerEnter={() => setHovered(entry.player.id)}
-                onPointerLeave={() => setHovered((id) => (id === entry.player.id ? null : id))}
+                {...marks(entry.player.id)}
               >
                 {/* The wick: the whole range the price ever covered. */}
                 <line
@@ -149,7 +148,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
               underneath them is one the eye has to be told how to read. */}
           {drawn.map(({ entry }, index) => {
             const centre = centreOf(index)
-            const dimmed = hovered !== null && hovered !== entry.player.id
+            const dimmed = picked !== null && picked !== entry.player.id
             return (
               <text
                 key={entry.player.id}
@@ -166,10 +165,10 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
           })}
         </svg>
 
-        {hovered !== null && (
+        {picked !== null && (
           <div className="chart-tooltip chart-tooltip-corner">
             {drawn
-              .filter(({ entry }) => entry.player.id === hovered)
+              .filter(({ entry }) => entry.player.id === picked)
               .map(({ entry, candle }) => (
                 <span key={entry.player.id}>
                   <strong>{entry.player.name}</strong> open {label(candle.open)} · high{' '}

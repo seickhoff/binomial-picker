@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { colorForSlot } from '../game/palette'
 import { seriesWalks } from '../game/series'
 import {
@@ -9,6 +9,7 @@ import {
   valueAxis,
   valueFormat,
 } from './chartAxis'
+import { useChartPick } from './chartPick'
 import { smoothPath } from './curve'
 import type { Mode, RankedEntry, Round } from '../game/types'
 
@@ -37,7 +38,7 @@ export interface MoveLinesProps {
 const PAD = { top: 14, right: 62, bottom: 22, left: 44 }
 
 export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLinesProps) {
-  const [hovered, setHovered] = useState<string | null>(null)
+  const { picked, marks } = useChartPick<string>()
 
   const walks = useMemo(() => {
     const byId = new Map(entries.map((entry) => [entry.player.id, entry]))
@@ -96,17 +97,12 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
 
           {walks.map(({ entry, values }) => {
             const path = smoothPath(values.map((value, row) => ({ x: x(row), y: y(value) })))
-            const dimmed = hovered !== null && hovered !== entry.player.id
+            const dimmed = picked !== null && picked !== entry.player.id
             return (
               <g key={entry.player.id} className={dimmed ? 'move-line is-dimmed' : 'move-line'}>
                 <path d={path} stroke={colorForSlot(entry.player.slot).hex} />
                 {/* Wide invisible stroke so the line is easy to hit. */}
-                <path
-                  d={path}
-                  className="move-line-hit"
-                  onPointerEnter={() => setHovered(entry.player.id)}
-                  onPointerLeave={() => setHovered((id) => (id === entry.player.id ? null : id))}
-                />
+                <path d={path} className="move-line-hit" {...marks(entry.player.id)} />
               </g>
             )
           })}
@@ -115,7 +111,7 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
               than its colour. */}
           {walks.map(({ entry, values }) => {
             const endY = y(values[values.length - 1])
-            const dimmed = hovered !== null && hovered !== entry.player.id
+            const dimmed = picked !== null && picked !== entry.player.id
             return (
               <text
                 key={entry.player.id}
@@ -138,10 +134,10 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
           </text>
         </svg>
 
-        {hovered !== null && (
+        {picked !== null && (
           <div className="chart-tooltip chart-tooltip-corner">
             {walks
-              .filter((walk) => walk.entry.player.id === hovered)
+              .filter((walk) => walk.entry.player.id === picked)
               .map(({ entry, values }) => (
                 <span key={entry.player.id}>
                   <strong>{entry.player.name}</strong> {label(values[values.length - 1])}

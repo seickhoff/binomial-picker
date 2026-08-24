@@ -1190,7 +1190,9 @@ input[type='range']:focus-visible {
   transition: fill 120ms ease;
 }
 
-.chart-bar.is-hovered {
+/* The bar the popup belongs to — pointed at with a mouse, or tapped and left
+   showing. Not `is-hovered`: on a phone, hovering is not what happened. */
+.chart-bar.is-picked {
   fill: #3987e5;
 }
 
@@ -1226,9 +1228,22 @@ input[type='range']:focus-visible {
   letter-spacing: 0.04em;
 }
 
+/*
+ * The chart popup. Its horizontal place is set from script — measured against the
+ * plot and clamped to both ends — and everything about its size here is in aid of
+ * the same thing: a popup that is never cut off.
+ *
+ * It was `nowrap`, which on a desk is free — a line of a price, a percentage and
+ * three names is well inside 560px. On a phone the plot is a third of that, and a
+ * line that cannot wrap cannot be clamped into it either: it simply ran past the
+ * edge of the card and was clipped. Wrapping, the widest it can ever be is the
+ * plot itself, which is the width the clamp has to work with.
+ */
 .chart-tooltip {
   position: absolute;
   top: -6px;
+  left: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1241,7 +1256,9 @@ input[type='range']:focus-visible {
   border-radius: 8px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
   pointer-events: none;
-  white-space: nowrap;
+  /* A twenty-character name has nowhere to break, so it is allowed to break
+     anywhere rather than push the card wider than the screen. */
+  overflow-wrap: anywhere;
   z-index: 5;
 }
 
@@ -1360,11 +1377,13 @@ input[type='range']:focus-visible {
   stroke-dasharray: 3 4;
 }
 
+/* Pinned to the plot's corner rather than to a mark: a line or a candle is the
+   whole height of the chart, so there is no one point to sit beside. Nothing
+   places this one, so it keeps `left: auto` and stays out of script's way. */
 .chart-tooltip-corner {
   top: 4px;
   right: 4px;
   left: auto;
-  transform: none;
 }
 
 /* ---------- Results table ---------- */

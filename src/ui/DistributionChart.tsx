@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { binomialPmf, formatOdds, formatPercent } from '../game/binomial'
 import { slotLabel } from '../game/modes'
 import { colorForSlot } from '../game/palette'
+import { popupLeft, useChartPick } from './chartPick'
 import { axisLabelInterval, chartSubtitle, chartTitle } from './presenters'
 import type { Landing, Mode, Player } from '../game/types'
 
@@ -39,7 +40,7 @@ export function DistributionChart({
 }: DistributionChartProps) {
   const stock = mode === 'stock'
   const labelFor = (bin: number) => slotLabel({ mode, bin, rows, openPrice })
-  const [hovered, setHovered] = useState<number | null>(null)
+  const { picked, marks } = useChartPick<number>()
   const pmf = useMemo(() => binomialPmf(rows), [rows])
   const peak = Math.max(...pmf)
 
@@ -71,19 +72,53 @@ export function DistributionChart({
   const columnCenter = (bin: number) => columnX(bin) + colW / 2
   const labelEvery = axisLabelInterval(pmf.length, mode)
 
-  const hoveredInfo =
-    hovered === null
+  const pickedInfo =
+    picked === null
       ? null
       : {
-          bin: hovered,
-          probability: pmf[hovered],
-          landed: byBin.get(hovered) ?? [],
-          x: columnCenter(hovered) / width,
+          bin: picked,
+          probability: pmf[picked],
+          landed: byBin.get(picked) ?? [],
+          /* Where the column sits across the plot, as a fraction — the SVG is
+             scaled to whatever width it is given, so user units mean nothing to
+             a popup measured in CSS pixels. */
+          x: columnCenter(picked) / width,
         }
+
+  /*
+   * The popup is placed against the plot's real width rather than left to a
+   * percentage and a half-width translate, which put the first bar's popup off
+   * the left edge of the card and the last bar's off the right — and the card
+   * clips, so what hung over was simply lost.
+   *
+   * Measured and clamped in a layout effect, so the popup is already in place at
+   * the first paint. Re-measured on resize because a tapped popup outlives the
+   * gesture that opened it: the card can be dragged and the phone's address bar
+   * comes and goes underneath it.
+   */
+  const plotRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const anchor = pickedInfo === null ? null : pickedInfo.x
+
+  useLayoutEffect(() => {
+    const plot = plotRef.current
+    const popup = popupRef.current
+    if (plot === null || popup === null || anchor === null) return
+
+    const place = () => {
+      const room = plot.clientWidth
+      popup.style.left = `${popupLeft(anchor * room, popup.offsetWidth, room)}px`
+    }
+
+    place()
+    const observer = new ResizeObserver(place)
+    observer.observe(plot)
+    return () => observer.disconnect()
+  }, [anchor])
 
   return (
     <figure className="chart">
-      <div className="chart-plot">
+      <div className="chart-plot" ref={plotRef}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
           role="img"
@@ -106,7 +141,7 @@ export function DistributionChart({
           {pmf.map((p, bin) => {
             const h = Math.max(2, (p / peak) * PLOT_H)
             const isWinner = winnerBins.includes(bin)
-            const isHovered = hovered === bin
+            const isPicked = picked === bin
             return (
               <rect
                 key={bin}
@@ -115,7 +150,7 @@ export function DistributionChart({
                 width={barW}
                 height={h}
                 rx={Math.min(4, barW / 2)}
-                className={`chart-bar${isWinner ? ' is-winner' : ''}${isHovered ? ' is-hovered' : ''}`}
+                className={`chart-bar${isWinner ? ' is-winner' : ''}${isPicked ? ' is-picked' : ''}`}
               />
             )
           })}
@@ -159,7 +194,8 @@ export function DistributionChart({
             }),
           )}
 
-          {/* Hit targets, deliberately wider and taller than the marks. */}
+          {/* Hit targets, deliberately wider and taller than the marks. A finger
+              gets the whole column, rug included. */}
           {pmf.map((_, bin) => (
             <rect
               key={bin}
@@ -168,27 +204,20 @@ export function DistributionChart({
               width={colW}
               height={PLOT_H + PAD.bottom + rugH}
               fill="transparent"
-              onPointerEnter={() => setHovered(bin)}
-              onPointerLeave={() => setHovered((h) => (h === bin ? null : h))}
+              {...marks(bin)}
             />
           ))}
         </svg>
 
-        {hoveredInfo && (
-          <div
-            className="chart-tooltip"
-            style={{
-              left: `${hoveredInfo.x * 100}%`,
-              transform: `translate(-50%, 0)`,
-            }}
-          >
-            <strong>{stock ? labelFor(hoveredInfo.bin) : `Bin ${hoveredInfo.bin}`}</strong>
+        {pickedInfo && (
+          <div className="chart-tooltip" ref={popupRef}>
+            <strong>{stock ? labelFor(pickedInfo.bin) : `Bin ${pickedInfo.bin}`}</strong>
             <span>
-              {formatPercent(hoveredInfo.probability)} · {formatOdds(hoveredInfo.probability)}
+              {formatPercent(pickedInfo.probability)} · {formatOdds(pickedInfo.probability)}
             </span>
-            {hoveredInfo.landed.length > 0 && (
+            {pickedInfo.landed.length > 0 && (
               <span className="chart-tooltip-players">
-                {hoveredInfo.landed.map(({ player }) => player.name).join(', ')}
+                {pickedInfo.landed.map(({ player }) => player.name).join(', ')}
               </span>
             )}
           </div>
