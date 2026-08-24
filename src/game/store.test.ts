@@ -1,8 +1,49 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_VOLATILITY, MAX_VOLATILITY_CENTS } from './modes'
 import { STORAGE_KEY, loadGame } from './testing'
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+describe('the volatility bands', () => {
+  it('keeps a band the right way round, whatever is typed into it', async () => {
+    const { useGame } = await loadGame()
+
+    // A high end under the low one would be a range nothing can be drawn from.
+    useGame.getState().setVolatilityBand('mid', [20, 3])
+    expect(useGame.getState().volatility.mid).toEqual([20, 20])
+
+    useGame.getState().setVolatilityBand('calm', [2, 9])
+    expect(useGame.getState().volatility.calm).toEqual([2, 9])
+  })
+
+  it('takes whole cents, inside the ceiling', async () => {
+    const { useGame } = await loadGame()
+
+    useGame.getState().setVolatilityBand('wild', [-5, 7.6])
+    expect(useGame.getState().volatility.wild).toEqual([0, 8])
+
+    useGame.getState().setVolatilityBand('wild', [0, 4000])
+    expect(useGame.getState().volatility.wild).toEqual([0, MAX_VOLATILITY_CENTS])
+  })
+
+  it('puts the shipped bands back', async () => {
+    const { useGame } = await loadGame()
+
+    useGame.getState().setVolatilityBand('calm', [40, 41])
+    useGame.getState().resetVolatility()
+    expect(useGame.getState().volatility).toEqual(DEFAULT_VOLATILITY)
+  })
+
+  it('leaves the other two alone', async () => {
+    const { useGame } = await loadGame()
+    const before = useGame.getState().volatility
+
+    useGame.getState().setVolatilityBand('mid', [7, 8])
+    expect(useGame.getState().volatility.calm).toEqual(before.calm)
+    expect(useGame.getState().volatility.wild).toEqual(before.wild)
+  })
 })
 
 describe('roster persistence', () => {

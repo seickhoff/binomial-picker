@@ -20,33 +20,96 @@ export const BASE_PER_PEG = 0.5
 const DOLLARS_PER_SLOT = BASE_PER_PEG * 2
 
 /**
- * What volatility adds to a row's move, in dollars: cents on top of the base.
+ * What volatility adds to a row's move: a mood, then a figure inside it.
  *
- * A row is drawn one of these when volatility is on, and every player crossing
- * that row wears it — added going right, subtracted going left, so the row is
- * simply worth a little more than half a slot. 51¢, 55¢ or 60¢ a peg.
+ * A row is drawn calm, mid or wild — evenly, one in three — and then a whole
+ * number of cents from inside that band, both ends included. Every player crossing
+ * the row wears the same figure, added going right and subtracted going left, so
+ * the row is simply worth a little more than half a slot.
  *
- * Cents rather than dollars because that leaves the shape of the game alone. The
- * dollars still come from the lattice, so a slot is still a dollar and the ladder
- * under the bins still means something; what the volatility decides is the small
- * change, which is exactly where a real tape carries its noise. It also puts the
- * three levels an order of magnitude apart, so a wild row is worth ten calm ones
- * and a session has a story.
+ * Two draws rather than one because three fixed figures made every session the
+ * same three sessions. A band keeps the character of a mood — a calm row is worth
+ * a few cents, a wild one a fifth of a slot — while no two wild rows are quite
+ * alike, which is what a tape actually looks like. A calm row may draw nothing at
+ * all, and that is the point of calling it calm.
  *
- * Shared per row is what keeps it fair: every player meets the same row worth the
- * same amount, with their own fair coin against it.
+ * Cents, not dollars, because that leaves the shape of the game alone: the dollars
+ * still come from the lattice, so a slot is still a dollar and the ladder under the
+ * bins still means something. What volatility decides is the small change, which is
+ * exactly where a real tape carries its noise.
+ *
+ * Shared per row is part of what keeps it fair: every player meets the same row
+ * worth the same amount, with their own fair coin against it. The other part is
+ * `JITTER_PER_PEG`, which is not shared — see there for why that is fair too.
  */
-export const ROW_VOLATILITY = {
-  calm: 0.01,
-  mid: 0.05,
-  wild: 0.1,
+export const DEFAULT_VOLATILITY = {
+  calm: [0, 5],
+  mid: [6, 10],
+  wild: [11, 25],
 } as const
 
-export const VOLATILITY_LEVELS = [
-  ROW_VOLATILITY.calm,
-  ROW_VOLATILITY.mid,
-  ROW_VOLATILITY.wild,
-] as const
+/** A band's ends, in whole cents, both included. */
+export type VolatilityBand = readonly [number, number]
+
+/** The three moods, in the order they are drawn and shown. */
+export const VOLATILITY_MOODS = ['calm', 'mid', 'wild'] as const
+export type VolatilityMood = (typeof VOLATILITY_MOODS)[number]
+
+/** The three bands as set up — the defaults above, or whatever was configured. */
+export type VolatilityBands = Readonly<Record<VolatilityMood, VolatilityBand>>
+
+/**
+ * The widest a band may be set to.
+ *
+ * 50¢ on top of the 50¢ base is a peg worth a whole slot, which is already past
+ * the point where the ladder under the bins means anything. It also keeps the
+ * sliders usable: a 50-step track has twice the room per cent that a 99-step one
+ * does, and these are set in single cents.
+ */
+export const MAX_VOLATILITY_CENTS = 50
+
+/** The bands in draw order, which is all the draw needs of them. */
+export function bandsOf(volatility: VolatilityBands): readonly VolatilityBand[] {
+  return VOLATILITY_MOODS.map((mood) => volatility[mood])
+}
+
+/** The most a row's peg can be worth, which is what bounds a session's range. */
+export function widestPerPeg(volatility: VolatilityBands): number {
+  const widest = Math.max(...VOLATILITY_MOODS.map((mood) => volatility[mood][1]))
+  return BASE_PER_PEG + widest / 100
+}
+
+/**
+ * A player's own penny, drawn per peg when volatility is on: −1¢, 0 or +1¢.
+ *
+ * Added to the price whichever way the marble went, rather than to the size of the
+ * move, so it does not cancel out for a marble that finishes level. That is what
+ * it is for: the row values are shared by the field, so two players who took
+ * mirror-image paths through the same market close at exactly the same price. This
+ * is the private penny that separates them.
+ *
+ * Still fair, and for the same reason as everything else here: every player draws
+ * from this same symmetric set at every peg, so every player's close has the
+ * identical distribution. Fairness has never rested on the market being shared —
+ * it rests on the distributions matching.
+ */
+export const JITTER_PER_PEG = [-0.01, 0, 0.01] as const
+/** The widest a single peg's private penny can be, either way. */
+export const MAX_JITTER = 0.01
+
+/**
+ * What a session's pegs are worth, and to whom.
+ *
+ * The row moves belong to the session and are the same for everyone in it; the
+ * jitter is one player's own. Passed together because pricing a walk needs both,
+ * and separately from the flips because neither is the player's own doing.
+ */
+export interface Market {
+  /** What each row of pegs is worth, in dollars, one per row. */
+  readonly rowMoves: readonly number[]
+  /** This player's private penny per peg, if the market has any. */
+  readonly jitter?: readonly number[]
+}
 
 /*
  * Prices are added up in whole cents, then converted once.
@@ -112,17 +175,18 @@ export function slotOffset(bin: number, rows: number): number {
 }
 
 /** Closing price for a path: the open, plus each row it crossed. */
-export function closeOf(
-  flips: readonly number[],
-  openPrice: number,
-  rowMoves: readonly number[],
-): number {
+export function closeOf(flips: readonly number[], openPrice: number, market: Market): number {
   return dollars(
-    flips.reduce(
-      (price, flip, row) => price + flip * cents(rowMoves[row] ?? BASE_PER_PEG),
-      cents(openPrice),
-    ),
+    flips.reduce((price, flip, row) => price + moveOf(market, flip, row), cents(openPrice)),
   )
+}
+
+/**
+ * What one peg does to a price, in cents: the row's move in the direction taken,
+ * plus the player's own penny whichever way that was.
+ */
+function moveOf(market: Market, flip: number, row: number): number {
+  return flip * cents(market.rowMoves[row] ?? BASE_PER_PEG) + cents(market.jitter?.[row] ?? 0)
 }
 
 /**
@@ -134,14 +198,14 @@ export function walkOf(
   flips: readonly number[],
   openPrice: number,
   mode: Mode,
-  rowMoves: readonly number[],
+  market: Market,
 ): number[] {
   const walk = [mode === 'stock' ? openPrice : 0]
   let price = cents(openPrice)
   let steps = 0
 
   flips.forEach((flip, row) => {
-    price += flip * cents(rowMoves[row] ?? BASE_PER_PEG)
+    price += moveOf(market, flip, row)
     steps += flip
     // Black Swan has no prices: its walk is slots from the centre, half a slot
     // per peg, and no volatility applies to it.

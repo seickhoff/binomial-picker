@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ROW_VOLATILITY,
   START_PRICE,
   BASE_PER_PEG,
   closeOf,
@@ -40,8 +39,8 @@ describe('stock price arithmetic, with every row worth the same', () => {
   it('puts neighbouring slots exactly two pegs apart', () => {
     for (let bin = 1; bin <= rows; bin++) {
       const step =
-        closeOf(pathTo(bin, rows), START_PRICE, flat) -
-        closeOf(pathTo(bin - 1, rows), START_PRICE, flat)
+        closeOf(pathTo(bin, rows), START_PRICE, { rowMoves: flat }) -
+        closeOf(pathTo(bin - 1, rows), START_PRICE, { rowMoves: flat })
       expect(step).toBeCloseTo(2 * BASE_PER_PEG, 10)
     }
   })
@@ -54,16 +53,22 @@ describe('stock price arithmetic, with every row worth the same', () => {
   })
 
   it('closes at the open plus the net move', () => {
-    expect(closeOf(pathTo(10, rows), START_PRICE, flat)).toBeCloseTo(closeAt(10, rows), 10)
-    expect(closeOf(pathTo(0, rows), START_PRICE, flat)).toBeCloseTo(closeAt(0, rows), 10)
+    expect(closeOf(pathTo(10, rows), START_PRICE, { rowMoves: flat })).toBeCloseTo(
+      closeAt(10, rows),
+      10,
+    )
+    expect(closeOf(pathTo(0, rows), START_PRICE, { rowMoves: flat })).toBeCloseTo(
+      closeAt(0, rows),
+      10,
+    )
     // Half and half is the open, exactly.
-    expect(closeOf(pathTo(5, rows), START_PRICE, flat)).toBeCloseTo(START_PRICE, 10)
+    expect(closeOf(pathTo(5, rows), START_PRICE, { rowMoves: flat })).toBeCloseTo(START_PRICE, 10)
     // Carrying a price forward from a previous session.
-    expect(closeOf(pathTo(7, rows), 104, flat)).toBeCloseTo(closeAt(7, rows, 104), 10)
+    expect(closeOf(pathTo(7, rows), 104, { rowMoves: flat })).toBeCloseTo(closeAt(7, rows, 104), 10)
   })
 
   it('moves the row it is crossing per peg, arriving at the close', () => {
-    const walk = walkOf(pathTo(6, rows), START_PRICE, 'stock', flat)
+    const walk = walkOf(pathTo(6, rows), START_PRICE, 'stock', { rowMoves: flat })
     expect(walk[0]).toBe(START_PRICE)
     expect(walk[1]).toBeCloseTo(START_PRICE + BASE_PER_PEG, 10)
     // A quote board always shows the cents, even on a round number.
@@ -71,9 +76,9 @@ describe('stock price arithmetic, with every row worth the same', () => {
     // The walk ends exactly where the close says it does.
     for (let bin = 0; bin <= rows; bin++) {
       const path = pathTo(bin, rows)
-      const steps = walkOf(path, START_PRICE, 'stock', flat)
+      const steps = walkOf(path, START_PRICE, 'stock', { rowMoves: flat })
       expect(steps).toHaveLength(rows + 1)
-      expect(steps[steps.length - 1]).toBe(closeOf(path, START_PRICE, flat))
+      expect(steps[steps.length - 1]).toBe(closeOf(path, START_PRICE, { rowMoves: flat }))
     }
   })
 
@@ -105,33 +110,64 @@ describe('stock price arithmetic, with every row worth the same', () => {
 describe('stock price arithmetic, with volatility on top of the base', () => {
   const rows = 4
   // A quiet start, then the day gets away from everyone.
-  const market = [
-    BASE_PER_PEG + ROW_VOLATILITY.calm,
-    BASE_PER_PEG + ROW_VOLATILITY.mid,
-    BASE_PER_PEG + ROW_VOLATILITY.wild,
-    BASE_PER_PEG + ROW_VOLATILITY.calm,
-  ]
+  // Figures a draw could actually produce: one from inside each band.
+  const CALM = 0.02
+  const MID = 0.08
+  const WILD = 0.2
+  const market = [BASE_PER_PEG + CALM, BASE_PER_PEG + MID, BASE_PER_PEG + WILD, BASE_PER_PEG + CALM]
 
   it('adds the drawn cents to the base move, in the direction taken', () => {
     // All four rows right: four base moves, plus what each row drew.
     const total = market.reduce((sum, step) => sum + step, 0)
-    expect(closeOf([1, 1, 1, 1], START_PRICE, market)).toBeCloseTo(START_PRICE + total, 10)
-    expect(closeOf([-1, -1, -1, -1], START_PRICE, market)).toBeCloseTo(START_PRICE - total, 10)
+    expect(closeOf([1, 1, 1, 1], START_PRICE, { rowMoves: market })).toBeCloseTo(
+      START_PRICE + total,
+      10,
+    )
+    expect(closeOf([-1, -1, -1, -1], START_PRICE, { rowMoves: market })).toBeCloseTo(
+      START_PRICE - total,
+      10,
+    )
     // The dollars are still the lattice's: four pegs is two slots, two dollars.
-    expect(closeOf([1, 1, 1, 1], START_PRICE, market) - START_PRICE).toBeGreaterThan(2)
-    expect(closeOf([1, 1, 1, 1], START_PRICE, market) - START_PRICE).toBeLessThan(2.5)
+    expect(closeOf([1, 1, 1, 1], START_PRICE, { rowMoves: market }) - START_PRICE).toBeGreaterThan(
+      2,
+    )
+    expect(closeOf([1, 1, 1, 1], START_PRICE, { rowMoves: market }) - START_PRICE).toBeLessThan(2.5)
+  })
+
+  it("adds each player's own penny whichever way their marble went", () => {
+    // Two players, the same market, mirror-image paths: level on the lattice and
+    // level on the shared rows, so only their own pennies can separate them.
+    const flat = { rowMoves: [BASE_PER_PEG, BASE_PER_PEG] }
+    const lucky = { ...flat, jitter: [0.01, 0.01] }
+    const unlucky = { ...flat, jitter: [-0.01, -0.01] }
+
+    expect(closeOf([1, -1], START_PRICE, lucky)).toBeCloseTo(START_PRICE + 0.02, 10)
+    expect(closeOf([1, -1], START_PRICE, unlucky)).toBeCloseTo(START_PRICE - 0.02, 10)
+    // Added to the price, not to the size of the move: a marble that went left
+    // wears its penny the same way as one that went right.
+    expect(closeOf([-1, 1], START_PRICE, lucky)).toBeCloseTo(START_PRICE + 0.02, 10)
+  })
+
+  it('separates a bin that the shared rows leave level', () => {
+    const market = { rowMoves: [BASE_PER_PEG, BASE_PER_PEG, BASE_PER_PEG, BASE_PER_PEG] }
+    const level = [1, 1, -1, -1]
+    const tied = closeOf(level, START_PRICE, market)
+    const nudged = closeOf(level, START_PRICE, { ...market, jitter: [0, 0.01, 0, 0] })
+
+    expect(tied).toBe(START_PRICE)
+    expect(nudged).toBeCloseTo(START_PRICE + 0.01, 10)
   })
 
   it('closes two marbles in the same bin a few cents apart', () => {
     // Both end level — two rows each way — but only one caught the wild row going
     // the right way. This is the whole difference the setting makes.
-    const caughtIt = closeOf([1, -1, 1, -1], START_PRICE, market)
-    const missedIt = closeOf([-1, 1, -1, 1], START_PRICE, market)
+    const caughtIt = closeOf([1, -1, 1, -1], START_PRICE, { rowMoves: market })
+    const missedIt = closeOf([-1, 1, -1, 1], START_PRICE, { rowMoves: market })
 
     expect(caughtIt).toBeGreaterThan(missedIt)
     // Cents apart, not dollars: the base cancels out for a level marble.
-    expect(caughtIt).toBeCloseTo(START_PRICE + (ROW_VOLATILITY.wild - ROW_VOLATILITY.mid), 10)
-    expect(missedIt).toBeCloseTo(START_PRICE - (ROW_VOLATILITY.wild - ROW_VOLATILITY.mid), 10)
+    expect(caughtIt).toBeCloseTo(START_PRICE + (WILD - MID), 10)
+    expect(missedIt).toBeCloseTo(START_PRICE - (WILD - MID), 10)
     expect(caughtIt - missedIt).toBeLessThan(0.25)
   })
 
@@ -156,8 +192,8 @@ describe('stock price arithmetic, with volatility on top of the base', () => {
     ]
     for (const path of paths) {
       const mirrored = path.map((flip) => -flip)
-      expect(closeOf(path, START_PRICE, market) - START_PRICE).toBe(
-        START_PRICE - closeOf(mirrored, START_PRICE, market),
+      expect(closeOf(path, START_PRICE, { rowMoves: market }) - START_PRICE).toBe(
+        START_PRICE - closeOf(mirrored, START_PRICE, { rowMoves: market }),
       )
     }
   })
@@ -168,7 +204,7 @@ describe('stock price arithmetic, with volatility on top of the base', () => {
   })
 
   it('leaves Black Swan measured in slots, whatever the market did', () => {
-    const walk = walkOf([1, 1, -1, -1], 0, 'blackSwan', market)
+    const walk = walkOf([1, 1, -1, -1], 0, 'blackSwan', { rowMoves: market })
     // Half a slot per peg, and no dollar anywhere near it.
     expect(walk).toEqual([0, 0.5, 1, 0.5, 0])
   })
@@ -347,6 +383,15 @@ describe('settling both ends', () => {
     const { useGame, settlementOf, rankRound } = await loadGame()
     useGame.getState().setMode(mode)
     useGame.getState().setSettleRule(rule)
+    /*
+     * A flat market, because these are tests about ties.
+     *
+     * With volatility on every player also draws their own penny at every peg, so
+     * two players landing in the same bin close a cent or two apart and the tie
+     * these tests are about does not exist. That is the setting working as
+     * intended — it just makes it the wrong setting to test settling under.
+     */
+    useGame.getState().setVolatileRows(false)
     useGame.getState().start()
     const ids = useGame.getState().round.entrantIds
     bins.forEach((bin, i) => useGame.getState().recordLanding(ids[i], bin))
@@ -491,7 +536,7 @@ describe('the walk behind a landing', () => {
     // closes at +$1 — a 6–4 split is not break-even, because a peg is half a
     // slot and the net is +2 steps.
     const flips = [1, 1, 1, 1, 1, 1, -1, -1, -1, -1]
-    const walk = walkOf(flips, START_PRICE, 'stock', steady(flips.length))
+    const walk = walkOf(flips, START_PRICE, 'stock', { rowMoves: steady(flips.length) })
 
     expect(walk).toHaveLength(flips.length + 1)
     expect(walk[0]).toBe(START_PRICE)
@@ -501,13 +546,15 @@ describe('the walk behind a landing', () => {
     expect(walk[walk.length - 1]).toBe(closeAt(6, flips.length))
 
     // Five and five is the flat case.
-    const even = walkOf([1, 1, 1, 1, 1, -1, -1, -1, -1, -1], START_PRICE, 'stock', steady(10))
+    const even = walkOf([1, 1, 1, 1, 1, -1, -1, -1, -1, -1], START_PRICE, 'stock', {
+      rowMoves: steady(10),
+    })
     expect(even[even.length - 1]).toBe(START_PRICE)
   })
 
   it('moves half a slot per row, never a whole one', async () => {
     const { walkOf } = await import('./modes')
-    const walk = walkOf([1, 1, -1, 1], START_PRICE, 'stock', steady(4))
+    const walk = walkOf([1, 1, -1, 1], START_PRICE, 'stock', { rowMoves: steady(4) })
     for (let i = 1; i < walk.length; i++) {
       expect(Math.abs(walk[i] - walk[i - 1])).toBeCloseTo(BASE_PER_PEG, 10)
     }
@@ -515,7 +562,7 @@ describe('the walk behind a landing', () => {
 
   it('measures slots from the centre in Black Swan', async () => {
     const { walkOf } = await import('./modes')
-    const walk = walkOf([1, 1, 1, 1], START_PRICE, 'blackSwan', steady(4))
+    const walk = walkOf([1, 1, 1, 1], START_PRICE, 'blackSwan', { rowMoves: steady(4) })
     // Four rights is two slots right of centre, and the open is zero.
     expect(walk[0]).toBe(0)
     expect(walk[walk.length - 1]).toBe(2)
@@ -536,8 +583,10 @@ describe('the walk behind a landing', () => {
 
     const { round, players } = useGame.getState()
     const [top] = rankRound(round, players, 'stock')
-    const walk = walkOf(top.landing.flips, top.openPrice, 'stock', round.rowMoves)
-    expect(walk[walk.length - 1]).toBe(closeOf(top.landing.flips, top.openPrice, round.rowMoves))
+    const walk = walkOf(top.landing.flips, top.openPrice, 'stock', { rowMoves: round.rowMoves })
+    expect(walk[walk.length - 1]).toBe(
+      closeOf(top.landing.flips, top.openPrice, { rowMoves: round.rowMoves }),
+    )
     expect(walk[walk.length - 1]).toBe(top.closePrice)
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { binOf, drawRound } from './rounds'
 import { binomialPmf } from './binomial'
-import { VOLATILITY_LEVELS, BASE_PER_PEG } from './modes'
+import { BASE_PER_PEG, DEFAULT_VOLATILITY, bandsOf } from './modes'
 
 const SAMPLES = 200_000
 
@@ -76,15 +76,73 @@ describe.each([4, 10, 16, 24])('drawing a round of %i rows', (rows) => {
     expect(rowMoves[0]).toBe(BASE_PER_PEG)
   })
 
-  it('adds one of the three levels to each row when volatility is on', () => {
+  it('adds a whole number of cents from inside one of the bands', () => {
     const seen = new Set<number>()
-    for (let attempt = 0; attempt < 200; attempt++) {
+    for (let attempt = 0; attempt < 400; attempt++) {
       const { rowMoves } = draw(['a', 'b'], rows, true)
       expect(rowMoves).toHaveLength(rows)
-      for (const step of rowMoves) seen.add(Math.round((step - BASE_PER_PEG) * 100) / 100)
+      for (const step of rowMoves) seen.add(Math.round((step - BASE_PER_PEG) * 100))
     }
-    // Only ever one of the three, and over that many rows, all three appear.
-    expect([...seen].sort((a, b) => a - b)).toEqual([...VOLATILITY_LEVELS].sort((a, b) => a - b))
+
+    const bands = bandsOf(DEFAULT_VOLATILITY)
+    const widest = Math.max(...bands.map(([, high]) => high))
+    for (const cents of seen) {
+      expect(Number.isInteger(cents), `${cents}¢`).toBe(true)
+      // Inside some band, which for these three is the whole range end to end.
+      expect(cents, `${cents}¢`).toBeGreaterThanOrEqual(0)
+      expect(cents, `${cents}¢`).toBeLessThanOrEqual(widest)
+    }
+
+    // Over that many rows every band gets drawn, and more than one figure from
+    // each — the point of drawing a range rather than three fixed levels.
+    for (const [low, high] of bands) {
+      const fromBand = [...seen].filter((cents) => cents >= low && cents <= high)
+      expect(fromBand.length, `${low}–${high}¢`).toBeGreaterThan(1)
+    }
+  })
+
+  it('draws nobody a private penny on a flat market', () => {
+    const { jitter } = draw(['a', 'b'], rows)
+    expect(jitter).toEqual({})
+  })
+
+  it('draws every entrant their own penny per peg when volatility is on', () => {
+    const { jitter } = draw(['a', 'b', 'c'], rows, true)
+    expect(Object.keys(jitter)).toEqual(['a', 'b', 'c'])
+
+    const seen = new Set<number>()
+    for (let attempt = 0; attempt < 200; attempt++) {
+      for (const pennies of Object.values(draw(['a', 'b', 'c'], rows, true).jitter)) {
+        expect(pennies).toHaveLength(rows)
+        for (const penny of pennies) seen.add(Math.round(penny * 100))
+      }
+    }
+    // A cent either way, or nothing — and all three turn up.
+    expect([...seen].sort((a, b) => a - b)).toEqual([-1, 0, 1])
+  })
+
+  it('draws from the bands it is given, not the ones it ships with', () => {
+    // A market set up by hand: one mood, one figure, so every row is worth it.
+    const flat = [50, 50] as const
+    const { rowMoves } = drawRound({
+      entrantIds: ['a'],
+      rows,
+      volatileRows: true,
+      volatility: { calm: flat, mid: flat, wild: flat },
+    })
+
+    for (const step of rowMoves) expect(step).toBeCloseTo(BASE_PER_PEG + 0.5, 10)
+  })
+
+  it('gives two players the same market and different pennies', () => {
+    // Which is the whole distinction: the rows are the session's, the pennies are
+    // the player's. Over this many rows an identical pair is vanishingly unlikely.
+    let same = 0
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const { jitter } = draw(['a', 'b'], rows, true)
+      if (jitter.a.join() === jitter.b.join()) same += 1
+    }
+    expect(same).toBeLessThan(50)
   })
 
   it('gives the whole field one market, which is what keeps it fair', () => {

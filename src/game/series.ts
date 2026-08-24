@@ -17,6 +17,7 @@
  */
 import { binomialPmf } from './binomial'
 import { walkOf } from './modes'
+import { marketFor } from './scoring'
 import { binOf } from './rounds'
 import type { Landing, Mode, Round } from './types'
 
@@ -56,7 +57,12 @@ function walkThrough(playerId: string, sessions: readonly Round[], mode: Mode): 
 
     // Each session at the scale it was played at, so a series charted across
     // days is continuous even if the setting has since changed.
-    const walk = walkOf(flips, session.openPrices[playerId] ?? 0, mode, session.rowMoves)
+    const walk = walkOf(
+      flips,
+      session.openPrices[playerId] ?? 0,
+      mode,
+      marketFor(session, playerId),
+    )
     if (values.length === 0) values.push(walk[0])
     else dayBreaks.push(values.length - 1)
     values.push(...walk.slice(1))

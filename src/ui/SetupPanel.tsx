@@ -1,18 +1,54 @@
 import { useEffect } from 'react'
 import { binomialPmf } from '../game/binomial'
 import { MAX_ROWS, MIN_ROWS } from '../game/geometry'
-import { MODES, MODE_ORDER } from '../game/modes'
+import { MAX_VOLATILITY_CENTS, MODES, MODE_ORDER, VOLATILITY_MOODS } from '../game/modes'
 import { MAX_PLAYERS, MIN_PLAYERS, colorForSlot } from '../game/palette'
 import { useGame } from '../game/store'
 import { PlayerDot } from './PlayerTag'
+import { tickerSymbols } from '../game/symbols'
 import {
   autoSessionsHint,
   autoSessionsLabel,
   rowsSummary,
   settleRuleHint,
-  tickerSymbols,
   volatilityHint,
 } from './presenters'
+
+/**
+ * One end of a volatility band, in whole cents.
+ *
+ * A slider rather than a typed number. As a number field it was near enough
+ * unusable: the value is controlled by the store, which clamps a band the moment
+ * it stops making sense, so a digit typed against an existing one gave 51¢ before
+ * you could reach the 2, and correcting it meant selecting four characters in a
+ * four-character box. Dragged, every position is valid on the way past.
+ *
+ * The figure is not repeated beside each slider — the band's own heading already
+ * reads "0–5¢", which is the pair the reader wants rather than either end alone.
+ */
+function CentsSlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (cents: number) => void
+}) {
+  return (
+    <input
+      className="band-slider"
+      type="range"
+      min={0}
+      max={MAX_VOLATILITY_CENTS}
+      step={1}
+      value={value}
+      aria-label={label}
+      aria-valuetext={`${value} cents`}
+      onChange={(e) => onChange(Number(e.target.value))}
+    />
+  )
+}
 
 export function SetupPanel() {
   const rows = useGame((s) => s.rows)
@@ -37,6 +73,9 @@ export function SetupPanel() {
   const sortRoster = useGame((s) => s.sortRoster)
   const volatileRows = useGame((s) => s.volatileRows)
   const setVolatileRows = useGame((s) => s.setVolatileRows)
+  const volatility = useGame((s) => s.volatility)
+  const setVolatilityBand = useGame((s) => s.setVolatilityBand)
+  const resetVolatility = useGame((s) => s.resetVolatility)
   const settleRule = useGame((s) => s.settleRule)
   const setSettleRule = useGame((s) => s.setSettleRule)
   const autoSessions = useGame((s) => s.autoSessions)
@@ -97,23 +136,8 @@ export function SetupPanel() {
             value={rows}
             onChange={(e) => setRows(Number(e.target.value))}
           />
-          <p className="hint">{rowsSummary(mode, rows, pmf, volatileRows)}</p>
+          <p className="hint">{rowsSummary(mode, rows, pmf, volatileRows, volatility)}</p>
         </div>
-
-        {/* Only Stock Market prices anything, so only it has a market to set. */}
-        {mode === 'stock' && (
-          <div className="field">
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={volatileRows}
-                onChange={(e) => setVolatileRows(e.target.checked)}
-              />
-              Volatility: each row moves its own amount
-            </label>
-            <p className="hint">{volatilityHint(volatileRows)}</p>
-          </div>
-        )}
       </section>
 
       <section className="panel-section panel-section-players">
@@ -290,14 +314,70 @@ export function SetupPanel() {
         )}
       </section>
 
-      <button
-        type="button"
-        className="btn btn-primary btn-block"
-        onClick={start}
-        disabled={!enoughPlayers}
-      >
-        {enoughPlayers ? `Drop ${playing.length} marbles` : `Need ${MIN_PLAYERS} players in`}
-      </button>
+      {/* Last, and its own section: only Stock Market prices anything, so only it
+          has a market to set — and the three bands are more card than the settings
+          above them, which have to stay reachable. */}
+      {mode === 'stock' && (
+        <section className="panel-section">
+          <h2>Volatility</h2>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={volatileRows}
+              onChange={(e) => setVolatileRows(e.target.checked)}
+            />
+            Each row moves its own amount
+          </label>
+
+          {/* Only while it is on: three bands are a lot of card to spend on a
+              setting that is doing nothing. */}
+          {volatileRows && (
+            <div className="bands">
+              {VOLATILITY_MOODS.map((mood) => {
+                const [low, high] = volatility[mood]
+                return (
+                  <div className="band" key={mood}>
+                    <div className="band-head">
+                      <span className="band-name">{mood}</span>
+                      <span className="band-range">
+                        {low}–{high}¢
+                      </span>
+                    </div>
+                    <CentsSlider
+                      label={`${mood} band, from`}
+                      value={low}
+                      onChange={(cents) => setVolatilityBand(mood, [cents, high])}
+                    />
+                    <CentsSlider
+                      label={`${mood} band, to`}
+                      value={high}
+                      onChange={(cents) => setVolatilityBand(mood, [low, cents])}
+                    />
+                  </div>
+                )
+              })}
+              <button type="button" className="btn btn-ghost" onClick={resetVolatility}>
+                Reset bands
+              </button>
+            </div>
+          )}
+          <p className="hint">{volatilityHint(volatileRows, volatility)}</p>
+        </section>
+      )}
+
+      {/* Wrapped so the compact layout has something to make sticky: as a sheet,
+          this panel is one long scroll, and the button that starts the round is
+          the one control that must never be scrolled away from. */}
+      <footer className="panel-footer">
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={start}
+          disabled={!enoughPlayers}
+        >
+          {enoughPlayers ? `Drop ${playing.length} marbles` : `Need ${MIN_PLAYERS} players in`}
+        </button>
+      </footer>
     </aside>
   )
 }

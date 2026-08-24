@@ -1,7 +1,15 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { MAX_ROWS, MIN_ROWS } from './geometry'
-import { BASE_PER_PEG, START_PRICE } from './modes'
+import {
+  BASE_PER_PEG,
+  DEFAULT_VOLATILITY,
+  MAX_VOLATILITY_CENTS,
+  START_PRICE,
+  type VolatilityBand,
+  type VolatilityBands,
+  type VolatilityMood,
+} from './modes'
 import { MAX_PLAYERS, MIN_PLAYERS } from './palette'
 import { drawRound } from './rounds'
 import { isRoundComplete, landingFor, priceAfter, settlementOf } from './scoring'
@@ -58,11 +66,14 @@ function lowestFreeSlot(players: readonly Player[]): number {
  */
 function emptyRound({
   plan = {},
+  jitter = {},
   ...round
-}: Omit<Round, 'landings' | 'plan'> & {
+}: Omit<Round, 'landings' | 'plan' | 'jitter'> & {
   plan?: Record<string, readonly number[]>
+  /** Absent on a flat market, which is most of them. */
+  jitter?: Record<string, readonly number[]>
 }): Round {
-  return { ...round, plan, landings: [] }
+  return { ...round, plan, jitter, landings: [] }
 }
 
 /**
@@ -74,6 +85,21 @@ function emptyRound({
  */
 function openingPhase(mode: Mode): Phase {
   return mode === 'stock' ? 'opening' : 'running'
+}
+
+/**
+ * A band that makes sense whatever was typed into it.
+ *
+ * Whole cents, nothing negative, nothing past the ceiling, and the low end never
+ * above the high one — a range that reads backwards would draw from nothing. The
+ * high end gives way rather than the low, so typing a low end leaves it where it
+ * was put.
+ */
+function saneBand(low: number, high: number): VolatilityBand {
+  const cents = (value: number) =>
+    Math.min(MAX_VOLATILITY_CENTS, Math.max(0, Math.round(Number.isFinite(value) ? value : 0)))
+  const bottom = cents(low)
+  return [bottom, Math.max(bottom, cents(high))]
 }
 
 /** Some path that reaches `bin`: the rights taken first. */
@@ -124,6 +150,8 @@ export interface GameState {
    * and, while ties are outstanding, the next one follows the summary.
    */
   autoSessions: boolean
+  /** The bands a row's mood is drawn from, in whole cents. */
+  volatility: VolatilityBands
   /**
    * When the series' first session was held, as epoch milliseconds. Later
    * sessions are dated forward from it, one trading day each.
@@ -152,6 +180,9 @@ export interface GameState {
   setPlinkSound: (on: boolean) => void
   setMuted: (muted: boolean) => void
   setAutoSessions: (on: boolean) => void
+  /** Sets one mood's band. Ends are whole cents, and low never exceeds high. */
+  setVolatilityBand: (mood: VolatilityMood, band: VolatilityBand) => void
+  resetVolatility: () => void
   setOverview: (on: boolean) => void
   addPlayer: () => void
   removePlayer: (id: string) => void
@@ -199,6 +230,7 @@ export const useGame = create<GameState>()(
       plinkSound: true,
       muted: false,
       autoSessions: true,
+      volatility: DEFAULT_VOLATILITY,
       seriesStart: 0,
       overview: false,
       round: emptyRound({
@@ -225,6 +257,13 @@ export const useGame = create<GameState>()(
       setPlinkSound: (plinkSound) => set({ plinkSound }),
       setMuted: (muted) => set({ muted }),
       setAutoSessions: (autoSessions) => set({ autoSessions }),
+
+      setVolatilityBand: (mood, [low, high]) =>
+        set((state) => ({
+          volatility: { ...state.volatility, [mood]: saneBand(low, high) },
+        })),
+
+      resetVolatility: () => set({ volatility: DEFAULT_VOLATILITY }),
       setOverview: (overview) => set({ overview }),
 
       addPlayer: () =>
@@ -256,13 +295,13 @@ export const useGame = create<GameState>()(
       canStart: () => activePlayers(get().players).length >= MIN_PLAYERS,
 
       start: () => {
-        const { players, rows, runToken, mode, volatileRows } = get()
+        const { players, rows, runToken, mode, volatileRows, volatility } = get()
         const entrants = activePlayers(players)
         if (entrants.length < MIN_PLAYERS) return
 
         const entrantIds = entrants.map((p) => p.id)
         const openPrices = openingPrices(entrantIds)
-        const draw = drawRound({ entrantIds, rows, volatileRows })
+        const draw = drawRound({ entrantIds, rows, volatileRows, volatility })
 
         set({
           phase: openingPhase(mode),
@@ -277,6 +316,7 @@ export const useGame = create<GameState>()(
             tieBreak: false,
             openPrices,
             rowMoves: draw.rowMoves,
+            jitter: draw.jitter,
             plan: draw.plan,
           }),
           runToken: runToken + 1,
@@ -301,7 +341,12 @@ export const useGame = create<GameState>()(
         // In Stock Market everyone resumes from the price they reached; in Black
         // Swan the prices are unused and this is simply a fresh drop.
         const openPrices = Object.fromEntries(field.map((id) => [id, priceAfter(id, round)]))
-        const draw = drawRound({ entrantIds: field, rows, volatileRows: get().volatileRows })
+        const draw = drawRound({
+          entrantIds: field,
+          rows,
+          volatileRows: get().volatileRows,
+          volatility: get().volatility,
+        })
 
         set({
           phase: openingPhase(mode),
@@ -315,6 +360,7 @@ export const useGame = create<GameState>()(
             // Its own conditions: a new day is a new market, and prices already
             // on the tape are not disturbed by what tomorrow turns out to be.
             rowMoves: draw.rowMoves,
+            jitter: draw.jitter,
             plan: draw.plan,
           }),
           runToken: runToken + 1,
@@ -369,6 +415,7 @@ export const useGame = create<GameState>()(
         plinkSound: state.plinkSound,
         muted: state.muted,
         autoSessions: state.autoSessions,
+        volatility: state.volatility,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return

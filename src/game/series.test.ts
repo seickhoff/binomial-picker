@@ -60,6 +60,7 @@ function sessionOf({
     tieBreak: index > 0,
     rowMoves: Array.from({ length: rows }, () => BASE_PER_PEG),
     plan: {},
+    jitter: {},
     openPrices: Object.fromEntries(entrantIds.map((id) => [id, START_PRICE])),
   }
 }

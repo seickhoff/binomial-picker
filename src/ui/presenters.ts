@@ -9,13 +9,17 @@ import { formatOdds, formatPercent } from '../game/binomial'
 import {
   BASE_PER_PEG,
   MODES,
-  ROW_VOLATILITY,
   START_PRICE,
+  MAX_JITTER,
+  VOLATILITY_MOODS,
+  widestPerPeg,
+  type VolatilityBands,
   formatChange,
   formatPrice,
   priceRange,
 } from '../game/modes'
 import type { Settlement } from '../game/scoring'
+import { tickerSymbols } from '../game/symbols'
 import type { Mode, Player, RankedEntry, SettleRule } from '../game/types'
 
 /**
@@ -69,14 +73,13 @@ export function verdictDetail(
  * amount. And it takes the prices off the ladder under the bins, because once
  * rows differ a slot no longer has one.
  */
-export function volatilityHint(on: boolean): string {
-  const inCents = (step: number) => `${Math.round(step * 100)}¢`
-  const levels = [ROW_VOLATILITY.calm, ROW_VOLATILITY.mid, ROW_VOLATILITY.wild]
-    .map(inCents)
-    .join(', ')
+export function volatilityHint(on: boolean, volatility: VolatilityBands): string {
+  const bands = VOLATILITY_MOODS.map(
+    (mood) => `${mood} ${volatility[mood][0]}–${volatility[mood][1]}¢`,
+  ).join(', ')
   return on
-    ? `Each row adds ${levels} to its move, the same row for everyone — so two marbles in one bin close a few cents apart.`
-    : `Every row moves the same ${inCents(BASE_PER_PEG)} a peg, so every marble in a bin closes at the same price.`
+    ? `Each row is drawn ${bands} and adds that to its move, the same row for everyone — and every player picks up a penny either way at each peg, so no two marbles in a bin close alike.`
+    : `Every row moves the same ${Math.round(BASE_PER_PEG * 100)}¢ a peg, so every marble in a bin closes at the same price.`
 }
 
 /** What this row count means, in the setup panel. */
@@ -85,13 +88,13 @@ export function rowsSummary(
   rows: number,
   pmf: readonly number[],
   volatileRows: boolean,
+  volatility: VolatilityBands,
 ): string {
   if (mode === 'stock') {
     // The widest a session can be: every row going one way, and with volatility
-    // on, every row drawn wild.
-    const worstCase = Array.from(
-      { length: rows },
-      () => BASE_PER_PEG + (volatileRows ? ROW_VOLATILITY.wild : 0),
+    // on, every row drawn wild with the player's own penny going with them.
+    const worstCase = Array.from({ length: rows }, () =>
+      volatileRows ? widestPerPeg(volatility) + MAX_JITTER : BASE_PER_PEG,
     )
     const [low, high] = priceRange(START_PRICE, worstCase)
     return `Opens at ${formatPrice(START_PRICE)} · ${
@@ -227,72 +230,4 @@ function chartName(name: string): string {
   const [first = ''] = name.trim().split(/\s+/)
   // Eight characters of the 10px tape face is about the 62 units left for it.
   return first.length > 8 ? `${first.slice(0, 7)}…` : first
-}
-
-/**
- * Ticker symbols for a field of players, guaranteed distinct.
- *
- * Taking the first four letters is not enough: "Scott C" and "Scott E" both give
- * "SCOT", and two identical symbols on the tape means neither identifies anyone.
- * Each name proposes candidates in order of how well they read, and the first
- * one nobody has taken wins — the same trick real tickers use for BRK.A/BRK.B.
- */
-export function tickerSymbols(players: readonly Player[]): Map<string, string> {
-  const taken = new Set<string>()
-  const symbols = new Map<string, string>()
-
-  for (const player of players) {
-    const pick =
-      symbolCandidates(player.name, player.slot).find((candidate) => !taken.has(candidate)) ??
-      firstFreeFallback(taken, player.slot)
-    taken.add(pick)
-    symbols.set(player.id, pick)
-  }
-
-  return symbols
-}
-
-/** Best-reading forms first, each at most four characters. */
-function symbolCandidates(name: string, slot: number): string[] {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .map((word) => word.replace(/[^a-z0-9]/gi, '').toUpperCase())
-    .filter(Boolean)
-
-  if (words.length === 0) return []
-
-  const squashed = words.join('')
-  const candidates: string[] = []
-
-  // "Scott C" → SCOC, "Scott E" → SCOE: a shared stem plus the distinguishing
-  // initial, which is how a real tape separates share classes.
-  if (words.length > 1) {
-    const stem = words[0].slice(0, 3)
-    for (const word of words.slice(1)) candidates.push(`${stem}${word[0]}`)
-    candidates.push(
-      words
-        .map((word) => word[0])
-        .join('')
-        .slice(0, 4),
-    )
-  }
-
-  candidates.push(squashed.slice(0, 4))
-
-  // Walk deeper into the name for a distinguishing final character.
-  const stem = squashed.slice(0, 3)
-  for (const character of squashed.slice(3)) candidates.push(`${stem}${character}`)
-
-  candidates.push(`${stem}${slot + 1}`)
-  candidates.push(`${squashed.slice(0, 2)}${slot + 1}`)
-
-  return candidates.filter((candidate) => candidate.length >= 2)
-}
-
-/** Last resort, and always available: no two players share a slot. */
-function firstFreeFallback(taken: ReadonlySet<string>, slot: number): string {
-  let attempt = slot + 1
-  while (taken.has(`P${attempt}`)) attempt += 1
-  return `P${attempt}`
 }

@@ -6,7 +6,7 @@
  * the rules of the game can be read — and tested — on their own.
  */
 import { binomialPmf, deviation } from './binomial'
-import { START_PRICE, closeOf } from './modes'
+import { START_PRICE, closeOf, type Market } from './modes'
 import type { Landing, Mode, Player, RankedEntry, Round, SettleRule } from './types'
 
 /** Builds the landing record for a marble that came to rest in `bin`. */
@@ -26,6 +26,14 @@ export function landingFor(
     deviation: deviation(bin, round.rows),
     order,
   }
+}
+
+/**
+ * The market one player met in one round: the session's row values, and their own
+ * pennies. The single place that knows where each half is kept.
+ */
+export function marketFor(round: Round, playerId: string): Market {
+  return { rowMoves: round.rowMoves, jitter: round.jitter[playerId] }
 }
 
 /** What a player's stock opened this round at. */
@@ -53,11 +61,15 @@ export function priceAfter(playerId: string, round: Round): number {
   const open = openPriceOf(playerId, round)
   // From the path, not the bin: with rows worth different amounts, where a
   // marble finished no longer says what it is worth.
-  return landing ? closeOf(landing.flips, open, round.rowMoves) : open
+  return landing ? closeOf(landing.flips, open, marketFor(round, playerId)) : open
 }
 
 function closePriceOf(landing: Landing, round: Round): number {
-  return closeOf(landing.flips, openPriceOf(landing.playerId, round), round.rowMoves)
+  return closeOf(
+    landing.flips,
+    openPriceOf(landing.playerId, round),
+    marketFor(round, landing.playerId),
+  )
 }
 
 /**

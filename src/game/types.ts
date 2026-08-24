@@ -81,6 +81,15 @@ export interface Round {
   /** The flips each entrant will take, drawn before the round is rendered. */
   readonly plan: Readonly<Record<string, readonly number[]>>
   /**
+   * Each entrant's own penny per peg, in dollars — empty when the market is flat.
+   *
+   * Per player rather than per row, unlike `rowMoves`: this is the part of a
+   * price that is nobody else's. Drawn with the flips and kept with the round for
+   * the same reason — a chart of a finished session has to price it the way it
+   * was actually played.
+   */
+  readonly jitter: Readonly<Record<string, readonly number[]>>
+  /**
    * Price each entrant opened this round at, for Stock Market mode.
    *
    * In Stock Market mode these are always equal within a round: the first round

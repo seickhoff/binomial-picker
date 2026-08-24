@@ -4,7 +4,7 @@ import { openPriceOf } from '../game/scoring'
 import { useGame } from '../game/store'
 import type { Player } from '../game/types'
 import { quoteOf, subscribeQuotes } from '../live/priceFeed'
-import { tickerSymbols } from './presenters'
+import { tickerSymbols } from '../game/symbols'
 
 /**
  * Trading-floor ticker across the top of the screen in Stock Market mode.
@@ -54,7 +54,6 @@ export function TickerTape() {
           cell.item.dataset.trend = trend
           cell.price.dataset.trend = trend
           cell.percent.dataset.trend = trend
-          cell.item.dataset.closed = quote?.closed ? 'true' : 'false'
         }
       })
     }
@@ -176,12 +175,7 @@ function TickerItem({
   }, [player.id, registry])
 
   return (
-    <span
-      className="ticker-item tape"
-      ref={item}
-      data-closed="false"
-      data-trend={totalTrendOf(openPrice)}
-    >
+    <span className="ticker-item tape" ref={item} data-trend={totalTrendOf(openPrice)}>
       <span className="ticker-tag">{symbol}</span>
       <span className="ticker-price" ref={price} data-trend={totalTrendOf(openPrice)}>
         {formatTapePrice(openPrice)}
@@ -189,7 +183,6 @@ function TickerItem({
       <span className="ticker-percent" ref={percent} data-trend={totalTrendOf(openPrice)}>
         {formatTapePercent(openPrice)}
       </span>
-      <span className="ticker-live" />
     </span>
   )
 }
