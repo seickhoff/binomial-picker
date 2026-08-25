@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Binomial Picker">
+  <!--
+    A binomial distribution, five bars wide, with the rare bin lit.
+
+    The whole game in the smallest space it fits into: the bell is what the board
+    produces, and the short bar at the edge is the one that wins. Carries its own
+    dark ground rather than sitting on the tab's, so it reads the same in a light
+    browser as in a dark one.
+
+    Colours are the app's own: the page black behind, brass on the winner. The
+    other bars are lifted a little off the panel greys — at 16px a bar that is
+    only just visible is not visible.
+
+    No double hyphen anywhere in here: XML forbids one inside a comment, and an
+    icon that fails to parse fails silently, as a blank tab.
+
+    apple-touch-icon.png is this artwork again, and has to be redrawn by hand if
+    these bars or colours change. It differs in two ways, both forced by iOS: it
+    is a PNG, which is the only thing iOS will take, and it is square and
+    full bleed with the bars inset a tenth of the way in, because iOS rounds the
+    corners itself and would otherwise cut into the brass bar. To rebuild it,
+    scale the bar group by 4.5 onto a 180 by 180 field offset by 18, render, and
+    flatten onto the page black so the file carries no alpha.
+  -->
+  <rect width="32" height="32" rx="7" fill="#05060b" />
+  <g fill="#5b6878">
+    <rect x="7.5" y="14" width="5" height="14" rx="1.2" />
+    <rect x="13.5" y="7" width="5" height="21" rx="1.2" />
+    <rect x="19.5" y="14" width="5" height="14" rx="1.2" />
+    <rect x="25.5" y="21" width="5" height="7" rx="1.2" />
+  </g>
+  <rect x="1.5" y="21" width="5" height="7" rx="1.2" fill="#d2a53c" />
+</svg>
