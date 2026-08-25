@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { settlementOf } from '../game/scoring'
 import { useGame } from '../game/store'
 import type { Phase } from '../game/types'
+import { PLACARD_MS, SUMMARY_MS } from './sessionTiming'
 
 /**
  * Runs a series by itself.
@@ -12,11 +13,6 @@ import type { Phase } from '../game/types'
  * button, going back to setup — cancels them by changing the phase out from
  * under them.
  */
-
-/** Placard time. A beat to read the day, and for the bell to get going. */
-const PLACARD_MS = 2400
-/** Summary time, before the next session opens itself. */
-const SUMMARY_MS = 5200
 
 /**
  * Whether another session should open on its own.

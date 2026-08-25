@@ -16,6 +16,12 @@ export type ChartView =
   | 'moves'
   /** One candle per player: where each opened, closed, and reached either way. */
   | 'candles'
+  /**
+   * Not a chart at all: the next morning's paper, reporting the two ends of the
+   * field. It shares the switch because it is another way of looking at the
+   * session that just closed, and Stock Market is the only mode that has one.
+   */
+  | 'frontPage'
 
 /** How a round is scored. The board itself is identical either way. */
 export type Mode =

@@ -468,6 +468,21 @@ body {
   animation: modal-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 420ms both;
 }
 
+/*
+ * A card that is going to be replaced on a timer leaves on its own terms.
+ *
+ * The second animation in the list, so it overrides the entrance's forwards fill
+ * once it starts — until then the entrance holds the card at full opacity, which
+ * is why this needs no `from`. Opacity only: the card is not going anywhere, it
+ * is being handed over. The two figures come from the flow that sets the timer —
+ * see `SUMMARY_MS` — so the fade cannot drift away from the wait it belongs to.
+ */
+.panel-results[data-leaving] {
+  animation:
+    modal-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 420ms both,
+    modal-out var(--leave-ms) ease-in var(--leave-delay) forwards;
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;
@@ -479,10 +494,24 @@ body {
   }
 }
 
+@keyframes modal-out {
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panel-results {
     animation-duration: 1ms;
     animation-delay: 420ms;
+  }
+
+  /* Only the entrance is squashed. A fade is not motion, and cutting this one to
+     a millisecond would take the card away the moment it arrived — the delay
+     above applies to every animation in the list, this one included. */
+  .panel-results[data-leaving] {
+    animation-duration: 1ms, var(--leave-ms);
+    animation-delay: 420ms, var(--leave-delay);
   }
 }
 
@@ -1140,6 +1169,213 @@ input[type='range']:focus-visible {
   margin: 4px 0 0;
   font-size: 12.5px;
   color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- The front page ---------- */
+
+/*
+ * A scrap of newsprint on a dark card.
+ *
+ * Deliberately the one light surface in the app, and deliberately not styled from
+ * the palette: it is a piece of paper, and a paper that took the panel's ink and
+ * surfaces would just be another panel with a serif face. Its ink is fixed here
+ * rather than tokenised for the same reason — nothing else is allowed to inherit
+ * it.
+ *
+ * Contrast is checked the usual way: #1a1815 ink on #ece7db newsprint is about
+ * 14:1, and the two coloured kickers below are the darkened print inks, not the
+ * screen gain/loss pair, which would fail badly on a light ground.
+ */
+.newspaper {
+  /* The stories below size themselves to the paper, not to the screen — see the
+     container query under `.newspaper-stories`. */
+  container-type: inline-size;
+  padding: 12px 14px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  color: #1a1815;
+  font-family: 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  /* Flat stock with a slight rag: a faint diagonal on top of the paper colour,
+     which is enough to stop 14px of newsprint reading as a white box. */
+  background-image:
+    repeating-linear-gradient(
+      58deg,
+      rgba(120, 100, 70, 0.05) 0 2px,
+      rgba(255, 255, 255, 0.05) 2px 4px
+    ),
+    linear-gradient(180deg, #f0ebe0, #e4ddce);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.newspaper-masthead {
+  padding-bottom: 5px;
+  border-bottom: 3px double rgba(26, 24, 21, 0.55);
+}
+
+.newspaper-title {
+  margin: 0;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: #100f0d;
+}
+
+/*
+ * The strip of small print under the title, and it is one line or it is nothing.
+ *
+ * A masthead rule that breaks in two stops looking like a masthead rule. Nothing
+ * here wraps, then; what gives instead is how much of it there is. Sized so all
+ * four parts clear the narrowest card that still shows them — a shade over 430px
+ * of paper, which is where the container query below starts dropping the ones
+ * that say the least.
+ */
+.newspaper-dateline {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 5px 0 0;
+  font-family: var(--font);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(26, 24, 21, 0.72);
+}
+
+.newspaper-date {
+  /* The one part of the strip that is a fact rather than furniture. */
+  color: rgba(26, 24, 21, 0.9);
+}
+
+/*
+ * Two stories across the fold: the session's best on the left, its worst on the
+ * right — the same order the table underneath reads in.
+ */
+.newspaper-stories {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 9px;
+}
+
+/* Divided by a column rule, the way a page divides two stories. */
+.newspaper-story + .newspaper-story {
+  padding-left: 14px;
+  border-left: 1px solid rgba(26, 24, 21, 0.28);
+}
+
+/*
+ * Narrow paper keeps both columns and prints smaller.
+ *
+ * Stacking them was the obvious answer and the wrong one: a phone's results card
+ * is already scrolling, and one story above the other made the paper twice as
+ * tall as the screen had room for — you could read a headline or see there were
+ * two of them, but not both. A front page is two columns; that is most of what
+ * makes it look like a front page. So the columns stay and the type comes down
+ * to fit them, which is also what a real paper does with a narrow page.
+ *
+ * A container query rather than a media query, because what decides this is the
+ * width of the card and not the width of the screen: the results panel is 620px
+ * on a desk, the full width of a phone, and something in between while it is
+ * being dragged around a small window.
+ */
+@container (max-width: 430px) {
+  .newspaper {
+    padding: 10px 10px 8px;
+  }
+
+  .newspaper-title {
+    font-size: 19px;
+  }
+
+  .newspaper-dateline {
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 7.5px;
+    letter-spacing: 0.08em;
+  }
+
+  /*
+   * The volume, the issue number and the cover price go.
+   *
+   * All four on one line needs about 400px of paper; a phone has 320. Something
+   * had to be cut, and these are the parts that were never carrying anything —
+   * the edition and the date are what a dateline is for.
+   */
+  .newspaper-imprint {
+    display: none;
+  }
+
+  .newspaper-stories {
+    gap: 9px;
+    margin-top: 7px;
+  }
+
+  .newspaper-story + .newspaper-story {
+    padding-left: 9px;
+  }
+
+  .newspaper-kicker {
+    margin-bottom: 2px;
+    font-size: 7.5px;
+    letter-spacing: 0.1em;
+  }
+
+  /* About 150px of column. Small, but a headline is set large relative to its
+     measure, not to the page. */
+  .newspaper-headline {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .newspaper-deck {
+    margin-top: 4px;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+}
+
+.newspaper-kicker {
+  margin: 0 0 3px;
+  font-family: var(--font);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Print inks, dark enough to sit on paper. The kicker's own words already say
+   which end of the field this is, so the colour is never the only cue. */
+.newspaper-story[data-tone='good'] .newspaper-kicker {
+  color: #1a5c2a;
+}
+
+.newspaper-story[data-tone='bad'] .newspaper-kicker {
+  color: #8f2222;
+}
+
+.newspaper-headline {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #100f0d;
+  /* A headline is set to the column, and a long one hyphenates rather than
+     shoving a fourteen-letter word past the rule. */
+  hyphens: auto;
+}
+
+.newspaper-deck {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(26, 24, 21, 0.86);
   font-variant-numeric: tabular-nums;
 }
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { formatOdds } from '../game/binomial'
 import { MODES, formatChange, formatPrice, trendOf } from '../game/modes'
 import { commonOpenPrice, rankRound, settlementOf } from '../game/scoring'
@@ -8,9 +8,11 @@ import type { Mode, RankedEntry } from '../game/types'
 import { CandleChart } from './CandleChart'
 import { DistributionChart } from './DistributionChart'
 import { MoveLines } from './MoveLines'
+import { Newspaper } from './Newspaper'
 import { PlayerDot, PlayerName } from './PlayerTag'
 import { TapeQuote } from './TapeQuote'
 import { useDraggable } from './useDraggable'
+import { SUMMARY_FADE_MS, SUMMARY_MS } from './sessionTiming'
 import { tickerSymbols } from '../game/symbols'
 import {
   autoSessionHint,
@@ -22,12 +24,27 @@ import {
   tieBreakLabel,
   topKicker,
   verdictDetail,
+  type FrontPageEnd,
 } from './presenters'
 
+/*
+ * The four ways to look at a finished session.
+ *
+ * The front page is not a chart and does not pretend to be one; it sits on the
+ * same switch because it answers the same question as the other three — what
+ * happened — and because it is the tallest thing in the card after them. Behind
+ * the disclosure it costs nothing until it is asked for. It needs a market to
+ * report on, so Black Swan is not offered it.
+ *
+ * One word each. Four labels share a row that is a phone wide, and the two that
+ * were two words ("Every move", "Front page") each took two lines there, which
+ * made the switch taller than the button that opens it.
+ */
 const CHART_VIEWS = [
   { id: 'distribution', label: 'Distribution' },
-  { id: 'moves', label: 'Every move' },
+  { id: 'moves', label: 'Moves' },
   { id: 'candles', label: 'Candles' },
+  { id: 'frontPage', label: 'Paper', stockOnly: true },
 ] as const
 
 export function ResultsPanel() {
@@ -42,18 +59,43 @@ export function ResultsPanel() {
   const setChartOpen = useGame((s) => s.setChartOpen)
   const startTieBreak = useGame((s) => s.startTieBreak)
   const autoSessions = useGame((s) => s.autoSessions)
+  const seriesStart = useGame((s) => s.seriesStart)
   const rematch = useGame((s) => s.rematch)
   const backToSetup = useGame((s) => s.backToSetup)
 
   const ranked = rankRound(round, players, mode)
   const settlement = settlementOf(round, mode, settleRule)
   const { winners, settled } = settlement
-  const top = ranked.find((entry) => entry.isWinner)
   const symbols = tickerSymbols(players)
+  const leaders = ranked.filter((entry) => entry.isWinner)
+  const top = leaders[0]
   // The bottom is only its own result when it isn't also the top — a field where
   // everyone tied has one end, not two.
   const losers = ranked.filter((entry) => entry.isLoser && !entry.isWinner)
   const bottom = losers[0]
+
+  /*
+   * Who the morning paper writes about: the two ends of the field, each with the
+   * story their session earned. Whole ends rather than the leading name, so a tie
+   * is reported as one — the headline names everyone level and reads in the
+   * plural.
+   */
+  const named = (entries: readonly RankedEntry[]) =>
+    entries.map((entry) => ({ entry, symbol: symbols.get(entry.player.id) ?? '' }))
+  const ends: FrontPageEnd[] = []
+  if (top) ends.push({ players: named(leaders), tone: 'good' })
+  if (bottom) ends.push({ players: named(losers), tone: 'bad' })
+
+  /*
+   * Which views this mode offers, and which of them is showing.
+   *
+   * The choice is remembered across rounds and across modes, so it can name a
+   * view this mode does not have — leaving Stock Market on the front page and
+   * playing a round of Black Swan. Falling back beats hiding the panel's
+   * contents, and it costs nothing: switch back and the paper is there again.
+   */
+  const views = CHART_VIEWS.filter((option) => !('stockOnly' in option) || mode === 'stock')
+  const view = views.some((option) => option.id === chartView) ? chartView : 'distribution'
 
   /*
    * The whole series, when there is one.
@@ -85,8 +127,34 @@ export function ResultsPanel() {
 
   const { panel, handle } = useDraggable<HTMLElement, HTMLDivElement>()
 
+  /*
+   * The card knows it is on its way out.
+   *
+   * When the series is running itself, this one is replaced by the next session's
+   * placard on a timer nobody pressed, and disappearing mid-sentence reads as a
+   * glitch rather than as a turn ending. So it spends its last moment fading, on
+   * the flow's own clock — the fade is timed to finish as the placard arrives.
+   *
+   * CSS runs it, off two custom properties, rather than a second timer in here
+   * racing the one that actually changes the phase.
+   */
+  const leaving = !settled && autoSessions
+
   return (
-    <section className="panel panel-results" aria-live="polite" ref={panel}>
+    <section
+      className="panel panel-results"
+      aria-live="polite"
+      ref={panel}
+      data-leaving={leaving ? '' : undefined}
+      style={
+        leaving
+          ? ({
+              '--leave-delay': `${SUMMARY_MS - SUMMARY_FADE_MS}ms`,
+              '--leave-ms': `${SUMMARY_FADE_MS}ms`,
+            } as CSSProperties)
+          : undefined
+      }
+    >
       {/* Drag handle. The verdict sits inside it, so the whole top of the card
           is the grab area rather than a thin strip. */}
       <div className="panel-grip" ref={handle}>
@@ -95,7 +163,7 @@ export function ResultsPanel() {
         {top && (
           <VerdictBlock
             kicker={topKicker(mode, settlement)}
-            named={ranked.filter((entry) => entry.isWinner)}
+            named={leaders}
             lead={top}
             mode={mode}
             symbols={symbols}
@@ -130,17 +198,17 @@ export function ResultsPanel() {
         </button>
 
         {chartOpen && (
-          <div className="chart-switch" role="radiogroup" aria-label="Chart">
-            {CHART_VIEWS.map((view) => (
+          <div className="chart-switch" role="radiogroup" aria-label="View">
+            {views.map((option) => (
               <button
-                key={view.id}
+                key={option.id}
                 type="button"
                 role="radio"
-                aria-checked={chartView === view.id}
-                className={chartView === view.id ? 'is-active' : ''}
-                onClick={() => setChartView(view.id)}
+                aria-checked={view === option.id}
+                className={view === option.id ? 'is-active' : ''}
+                onClick={() => setChartView(option.id)}
               >
-                {view.label}
+                {option.label}
               </button>
             ))}
           </div>
@@ -148,7 +216,14 @@ export function ResultsPanel() {
       </div>
 
       {chartOpen &&
-        (chartView === 'candles' ? (
+        (view === 'frontPage' ? (
+          <Newspaper
+            ends={ends}
+            fieldSize={ranked.length}
+            roundIndex={round.index}
+            seriesStart={seriesStart}
+          />
+        ) : view === 'candles' ? (
           <CandleChart
             entries={ranked}
             candles={seriesCandles(sessions, mode)}
@@ -156,7 +231,7 @@ export function ResultsPanel() {
             openPrice={seriesOpenPrice}
             labels={lineLabels(mode, players)}
           />
-        ) : chartView === 'moves' ? (
+        ) : view === 'moves' ? (
           <MoveLines
             entries={ranked}
             sessions={sessions}
@@ -258,10 +333,7 @@ function VerdictBlock({
   symbols: ReadonlyMap<string, string>
 }) {
   const tied = named.length > 1
-  // A tie is a tie on one figure only; anything derived from the opening price
-  // is per-player unless they all opened together.
-  const sharedOpen = named.every((entry) => entry.openPrice === lead.openPrice)
-  const detail = verdictDetail(mode, lead, { tied, sharedOpen })
+  const detail = verdictDetail(mode, lead, { tied })
 
   return (
     <div className="verdict-block">
