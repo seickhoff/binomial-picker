@@ -24,30 +24,12 @@ import {
   resultsTableCaption,
   tieBreakLabel,
   topKicker,
+  chartViewsFor,
   resultColumnLabel,
+  shownChartView,
   verdictDetail,
   type FrontPageEnd,
 } from './presenters'
-
-/*
- * The four ways to look at a finished session.
- *
- * The front page is not a chart and does not pretend to be one; it sits on the
- * same switch because it answers the same question as the other three — what
- * happened — and because it is the tallest thing in the card after them. Behind
- * the disclosure it costs nothing until it is asked for. It needs a market to
- * report on, so Black Swan is not offered it.
- *
- * One word each. Four labels share a row that is a phone wide, and the two that
- * were two words ("Every move", "Front page") each took two lines there, which
- * made the switch taller than the button that opens it.
- */
-const CHART_VIEWS = [
-  { id: 'distribution', label: 'Distribution' },
-  { id: 'moves', label: 'Moves' },
-  { id: 'candles', label: 'Candles' },
-  { id: 'frontPage', label: 'Paper', stockOnly: true },
-] as const
 
 export function ResultsPanel() {
   const round = useGame((s) => s.round)
@@ -92,16 +74,8 @@ export function ResultsPanel() {
   if (top) ends.push({ players: named(leaders), tone: 'good' })
   if (bottom) ends.push({ players: named(losers), tone: 'bad' })
 
-  /*
-   * Which views this mode offers, and which of them is showing.
-   *
-   * The choice is remembered across rounds and across modes, so it can name a
-   * view this mode does not have — leaving Stock Market on the front page and
-   * playing a round of Black Swan. Falling back beats hiding the panel's
-   * contents, and it costs nothing: switch back and the paper is there again.
-   */
-  const views = CHART_VIEWS.filter((option) => !('stockOnly' in option) || mode === 'stock')
-  const view = views.some((option) => option.id === chartView) ? chartView : 'distribution'
+  const views = chartViewsFor(mode)
+  const view = shownChartView(mode, chartView)
 
   /*
    * The whole series, when there is one — and only Stock Market has one to draw.
@@ -207,7 +181,10 @@ export function ResultsPanel() {
           Chart
         </button>
 
-        {chartOpen && (
+        {/* Nothing to switch between in Black Swan, and a radio group of one is
+            a control that cannot do anything: the disclosure opens straight on
+            to the distribution. */}
+        {chartOpen && views.length > 1 && (
           <div className="chart-switch" role="radiogroup" aria-label="View">
             {views.map((option) => (
               <button

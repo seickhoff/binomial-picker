@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RankedEntry } from '../game/types'
 import type { NewsTone } from '../game/headlines'
-import { frontPage, type FrontPageEnd } from './presenters'
+import { chartViewsFor, frontPage, shownChartView, type FrontPageEnd } from './presenters'
 
 /** A Thursday, so the paper that reports on it is Friday's. */
 const SESSION_START = new Date(2026, 7, 20, 9, 30).getTime()
@@ -132,5 +132,29 @@ describe('the front page', () => {
     expect(masthead.title).not.toBe('')
     expect(masthead.edition).not.toBe('')
     expect(masthead.price).not.toBe('')
+  })
+})
+
+describe('which charts a mode offers', () => {
+  const idsFor = (mode: 'stock' | 'blackSwan') => chartViewsFor(mode).map((view) => view.id)
+
+  it('gives Black Swan the distribution and nothing else', () => {
+    // The other three are about a price going somewhere over time, and Black
+    // Swan has no price and no series to draw as one line.
+    expect(idsFor('blackSwan')).toEqual(['distribution'])
+  })
+
+  it('gives Stock Market all four', () => {
+    expect(idsFor('stock')).toEqual(['distribution', 'moves', 'candles', 'frontPage'])
+  })
+
+  it('falls back when the remembered view belongs to the other mode', () => {
+    // The choice is remembered across modes, so it can name one this mode has
+    // not got — leaving Stock Market on the paper and playing a round of swan.
+    expect(shownChartView('blackSwan', 'frontPage')).toBe('distribution')
+    expect(shownChartView('blackSwan', 'candles')).toBe('distribution')
+    // And it is only a fallback: switch back and the paper is there again.
+    expect(shownChartView('stock', 'frontPage')).toBe('frontPage')
+    expect(shownChartView('blackSwan', 'distribution')).toBe('distribution')
   })
 })

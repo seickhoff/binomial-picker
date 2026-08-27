@@ -21,7 +21,7 @@ import {
 } from '../game/modes'
 import type { Settlement } from '../game/scoring'
 import { tickerSymbols } from '../game/symbols'
-import type { Mode, Player, RankedEntry, SettleRule } from '../game/types'
+import type { ChartView, Mode, Player, RankedEntry, SettleRule } from '../game/types'
 
 /**
  * The chart's heading. Says what the axis is, and no more — the mode's rule is
@@ -36,6 +36,54 @@ export function chartTitle(mode: Mode, openPrice: number | null): string {
 export function chartSubtitle(mode: Mode, rows: number, openPrice: number | null): string {
   const unit = mode !== 'stock' ? 'bin' : openPrice === null ? 'move' : 'close'
   return `Chance of each ${unit} over ${rows} rows`
+}
+
+/*
+ * The four ways to look at a finished session — and Black Swan wants one of them.
+ *
+ * Three are about a price going somewhere over time. Stock Market has that: a
+ * series is one price history, so a line per player and a candle per player both
+ * say something the distribution cannot, and the front page has a market to
+ * report on. Black Swan has no price and its sessions do not join — they are
+ * separate drops whose odds multiply — so a line would be one day's walk drawn as
+ * though it were a history, and a candle would be four numbers off that one walk.
+ * Its answer is where the marble landed against where it could have, which is the
+ * distribution, and that is the whole of what it is offered.
+ *
+ * One word each. Four labels share a row that is a phone wide, and the two that
+ * were two words ("Every move", "Front page") each took two lines there, which
+ * made the switch taller than the button that opens it.
+ */
+const CHART_VIEWS: readonly ChartOption[] = [
+  { id: 'distribution', label: 'Distribution' },
+  { id: 'moves', label: 'Moves', stockOnly: true },
+  { id: 'candles', label: 'Candles', stockOnly: true },
+  { id: 'frontPage', label: 'Paper', stockOnly: true },
+] as const
+
+export interface ChartOption {
+  readonly id: ChartView
+  readonly label: string
+  /** Absent on the one view Black Swan has any use for. */
+  readonly stockOnly?: true
+}
+
+/** The views this mode offers, in the order the switch shows them. */
+export function chartViewsFor(mode: Mode): readonly ChartOption[] {
+  return CHART_VIEWS.filter((option) => !option.stockOnly || mode === 'stock')
+}
+
+/**
+ * The view actually showing.
+ *
+ * The choice is remembered across rounds and across modes, so it can name a view
+ * this mode does not have — leaving Stock Market on the front page and playing a
+ * round of Black Swan. Falling back beats hiding the panel's contents, and it
+ * costs nothing: switch back and the paper is there again.
+ */
+export function shownChartView(mode: Mode, remembered: ChartView): ChartView {
+  const views = chartViewsFor(mode)
+  return views.some((option) => option.id === remembered) ? remembered : 'distribution'
 }
 
 /** The single big number: what the winner actually got. */
