@@ -28,7 +28,7 @@ export function SceneBackdrop({ geo, theme }: { geo: BoardGeometry; theme: Backd
 
 export function Lights({ geo, fancy }: { geo: BoardGeometry; fancy: boolean }) {
   // A directional light aims at its target object, so give it one at the board's
-  // centre — otherwise the shadow frustum is centred on the world origin, which
+  // center — otherwise the shadow frustum is centered on the world origin, which
   // is up at the funnel.
   const target = useMemo(() => new Object3D(), [])
   const span = Math.max(geo.width, geo.height) * 0.62

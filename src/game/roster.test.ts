@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byName } from './store'
+import { byName } from './lineup'
 import { STORAGE_KEY, loadGame } from './testing'
 import type { Player } from './types'
 
@@ -89,7 +89,7 @@ describe('the roster in the store', () => {
     expect(filedAway[filedAway.length - 1].name).toBe('Zoe')
   })
 
-  it('keeps every colour with its player', async () => {
+  it('keeps every color with its player', async () => {
     const { useGame } = await loadGame()
     const before = useGame.getState().players
     useGame.getState().renamePlayer(before[0].id, 'Zoe')
@@ -99,7 +99,7 @@ describe('the roster in the store', () => {
     expect(after).toHaveLength(before.length)
     for (const player of before) {
       const moved = after.find((p) => p.id === player.id)
-      // Colour follows the slot, and the slot follows the person.
+      // Color follows the slot, and the slot follows the person.
       expect(moved?.slot).toBe(player.slot)
     }
   })

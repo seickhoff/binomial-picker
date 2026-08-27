@@ -10,7 +10,7 @@ const majors = (axis: ReturnType<typeof valueAxis>, mode: Mode) =>
 const values = (axis: ReturnType<typeof valueAxis>, mode: Mode) =>
   gridLines(axis, mode).map((line) => line.value)
 
-/** The gap between neighbouring lines, in plot pixels. */
+/** The gap between neighboring lines, in plot pixels. */
 const spacing = (axis: ReturnType<typeof valueAxis>, mode: Mode) => {
   const drawn = gridLines(axis, mode)
   return Math.abs(axis.y(drawn[1].value) - axis.y(drawn[0].value))

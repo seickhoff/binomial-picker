@@ -45,7 +45,7 @@ export function TickerTape() {
         const quote = quoteOf(player.id)
         const price = quote?.price ?? open
         // Both cells read against the common $100 start, so the number and its
-        // colour agree.
+        // color agree.
         const trend = totalTrendOf(price)
         for (const cell of cells.current.get(player.id) ?? []) {
           cell.price.textContent = formatTapePrice(price)

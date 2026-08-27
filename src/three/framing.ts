@@ -59,8 +59,8 @@ export interface Shot {
  * the look-at than half a frame, and the bottom meets it further away.
  *
  * And depth matters: the plinth's front face is most of a unit nearer the camera
- * than the board's centre plane, and anything nearer projects further from the
- * centre of frame. Solving at z = 0 therefore put the real front edge below the
+ * than the board's center plane, and anything nearer projects further from the
+ * center of frame. Solving at z = 0 therefore put the real front edge below the
  * bottom of the screen — which is exactly how it once got cropped.
  */
 function edgeRise(framedHeight: number, halfFovTan: number, side: 1 | -1, z = 0): number {
@@ -161,14 +161,14 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
     wideHeight,
     /*
      * Both shots hang the device off the edge the action is at, rather than
-     * centring on it — centring leaves half a frame of empty backdrop on the far
+     * centering on it — centering leaves half a frame of empty backdrop on the far
      * side and pushes the board away from where the eye is. The drop starts at
      * the funnel, so that shot hangs from the top; it ends in the bins, so that
      * one sits on the bottom.
      */
     entryY: anchorTo(deviceTop, closeHeight, halfFovTan, viewportHeight, 1),
     /*
-     * Anchored to the bottom while the frame is tighter than the device; centred
+     * Anchored to the bottom while the frame is tighter than the device; centered
      * on it once the frame is the roomier of the two.
      *
      * Hanging it off the bottom is right whenever something has to be cut: what
@@ -182,15 +182,15 @@ export function shotFor(geo: BoardGeometry, aspect: number, viewportHeight: numb
      * Once everything fits there is no far end to sacrifice, so the device sits in
      * the middle and the surplus splits evenly above and below it. The two agree at
      * the crossover — a frame exactly as tall as the device is both anchored and
-     * centred — so nothing jumps as a window is resized past it.
+     * centered — so nothing jumps as a window is resized past it.
      */
     endY:
       wideHeight >= geo.height
         ? geo.centerY
         : anchorTo(deviceBottom, wideHeight, halfFovTan, viewportHeight, -1),
     /*
-     * Centred on the device rather than hung off an edge, because for once the
-     * whole thing is meant to be in view and there is no action to favour.
+     * Centered on the device rather than hung off an edge, because for once the
+     * whole thing is meant to be in view and there is no action to favor.
      *
      * Fitted to whichever dimension is tighter: a deep board is taller than it
      * is wide, a shallow one the other way about, and on a wide window it is the

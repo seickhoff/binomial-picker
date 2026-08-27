@@ -2,7 +2,7 @@ import { formatTapePercent, formatTapePrice, totalTrendOf } from '../game/modes'
 import type { RankedEntry } from '../game/types'
 
 /**
- * A single quote in the tape's own typeface and colours — the same look as the
+ * A single quote in the tape's own typeface and colors — the same look as the
  * ticker, standing still.
  *
  * Shares the `.tape` class with the ticker items rather than restating the LED

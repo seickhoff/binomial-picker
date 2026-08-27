@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { formatOddsCompact } from './binomial'
 import {
   START_PRICE,
   BASE_PER_PEG,
@@ -11,6 +12,7 @@ import {
   walkOf,
 } from './modes'
 import { loadGame } from './testing'
+import type { SettleRule } from './types'
 
 /** Flips that land in `bin` over `rows`: the rights first, then the lefts. */
 const pathTo = (bin: number, rows: number) =>
@@ -36,7 +38,7 @@ describe('stock price arithmetic, with every row worth the same', () => {
   const rows = 10
   const flat = steady(rows)
 
-  it('puts neighbouring slots exactly two pegs apart', () => {
+  it('puts neighboring slots exactly two pegs apart', () => {
     for (let bin = 1; bin <= rows; bin++) {
       const step =
         closeOf(pathTo(bin, rows), START_PRICE, { rowMoves: flat }) -
@@ -45,7 +47,7 @@ describe('stock price arithmetic, with every row worth the same', () => {
     }
   })
 
-  it('measures position from the centre slot', () => {
+  it('measures position from the center slot', () => {
     expect(slotOffset(10, 10)).toBe(5)
     expect(slotOffset(0, 10)).toBe(-5)
     expect(slotOffset(5, 10)).toBe(0)
@@ -100,7 +102,22 @@ describe('stock price arithmetic, with every row worth the same', () => {
     )
   })
 
-  it('reads direction for colouring', () => {
+  it('writes a slot on the ladder in the currency its mode pays in', async () => {
+    const { ladderLabel } = await import('./modes')
+    const { binomialPmf } = await import('./binomial')
+    const pmf = binomialPmf(rows)
+    const label = (mode: 'stock' | 'blackSwan', bin: number) =>
+      ladderLabel({ mode, bin, rows, openPrice: START_PRICE, chance: pmf[bin] })
+
+    // Stock Market pays dollars, so the ladder says what the slot closes at.
+    expect(label('stock', 10)).toBe(formatPrice(closeAt(10, rows)))
+    // Black Swan pays improbability, so it says how unlikely the slot is — and
+    // never a bin number, which means nothing without knowing the board.
+    expect(label('blackSwan', 10)).toBe(formatOddsCompact(pmf[10]))
+    expect(label('blackSwan', 10)).not.toBe('10')
+  })
+
+  it('reads direction for coloring', () => {
     expect(trendOf(3)).toBe('up')
     expect(trendOf(-3)).toBe('down')
     expect(trendOf(0)).toBe('flat')
@@ -252,9 +269,9 @@ describe('scoring differs by mode', () => {
       .map((e) => e.landing.bin)
 
     expect(stockOrder[0]).toBe(8)
-    // Highest close first, so the centre bins beat the $94 loser.
+    // Highest close first, so the center bins beat the $94 loser.
     expect(stockOrder[stockOrder.length - 1]).toBe(2)
-    // Rarest first, so the centre bins come last.
+    // Rarest first, so the center bins come last.
     expect(swanOrder.slice(0, 2).sort()).toEqual([2, 8])
   })
 
@@ -315,11 +332,11 @@ describe('stock ties carry the price forward', () => {
     ;[7, 7, 3, 4].forEach((bin, i) => useGame.getState().recordLanding(ids[i], bin))
     useGame.getState().startTieBreak()
 
-    // After hours: prices have diverged, so slots can only show the move.
+    // Day two: prices have diverged, so slots can only show the move.
     expect(commonOpenPrice(useGame.getState().round)).toBeNull()
   })
 
-  it('lets a trailing stock win the after-hours session', async () => {
+  it('lets a trailing stock win an extra day', async () => {
     const { useGame, rankRound, winnersOf } = await loadGame()
     useGame.getState().setMode('stock')
     // Dollar figures below assume every row is worth the same.
@@ -378,7 +395,7 @@ describe('settling both ends', () => {
   async function play(
     mode: 'stock' | 'blackSwan',
     bins: number[],
-    rule: 'winner' | 'winnerAndLoser' = 'winnerAndLoser',
+    rule: SettleRule = 'winnerAndLoser',
   ) {
     const { useGame, settlementOf, rankRound } = await loadGame()
     useGame.getState().setMode(mode)
@@ -466,7 +483,7 @@ describe('settling both ends', () => {
   })
 
   it('counts the most likely landing as last in Black Swan', async () => {
-    // Rarest wins, so the centre bin is the wooden spoon. Bins must not be
+    // Rarest wins, so the center bin is the wooden spoon. Bins must not be
     // mirror images of each other: bin 8 and bin 2 are exactly as rare.
     const { settlement, ranked } = await play('blackSwan', [9, 3, 5, 4])
     expect(settlement.settled).toBe(true)
@@ -493,6 +510,33 @@ describe('settling both ends', () => {
     const { settlement } = await play('stock', [8, 8, 5, 4], 'winner')
     expect(settlement.settled).toBe(false)
     expect(settlement.pending).toBe('top')
+  })
+
+  it('takes a level top as the result under "one shot"', async () => {
+    // $103, $103, $100, $99 — joint first, and under this rule that is the end
+    // of it. The tie is still reported; it is simply not something to settle.
+    const { settlement } = await play('stock', [8, 8, 5, 4], 'oneShot')
+    expect(settlement.settled).toBe(true)
+    expect(settlement.pending).toBe('none')
+    expect(settlement.winners).toHaveLength(2)
+  })
+
+  it('settles a wholly level field under "one shot"', async () => {
+    const { settlement } = await play('stock', [5, 5, 5, 5], 'oneShot')
+    expect(settlement.settled).toBe(true)
+    expect(settlement.winners).toHaveLength(4)
+    expect(settlement.losers).toHaveLength(4)
+  })
+
+  it('never opens a second session under "one shot", in either mode', async () => {
+    for (const mode of ['stock', 'blackSwan'] as const) {
+      // A level top in both: joint rarest in Black Swan, joint highest in Stock.
+      const { useGame } = await play(mode, [8, 8, 5, 4], 'oneShot')
+      useGame.getState().startTieBreak()
+      expect(useGame.getState().phase).toBe('results')
+      expect(useGame.getState().round.index).toBe(0)
+      expect(useGame.getState().round.tieBreak).toBe(false)
+    }
   })
 
   it('refuses to re-drop a settled round', async () => {
@@ -560,12 +604,20 @@ describe('the walk behind a landing', () => {
     }
   })
 
-  it('measures slots from the centre in Black Swan', async () => {
+  it('measures slots from the center in Black Swan', async () => {
     const { walkOf } = await import('./modes')
-    const walk = walkOf([1, 1, 1, 1], START_PRICE, 'blackSwan', { rowMoves: steady(4) })
-    // Four rights is two slots right of centre, and the open is zero.
+    const walk = walkOf([1, 1, 1, 1], 0, 'blackSwan', { rowMoves: steady(4) })
+    // Four rights is two slots right of center, from an open of dead center.
     expect(walk[0]).toBe(0)
     expect(walk[walk.length - 1]).toBe(2)
+  })
+
+  it('resumes a Black Swan walk from where the last session left it', async () => {
+    const { walkOf } = await import('./modes')
+    // Day two for a player already two slots right: the same four rights again
+    // put them at four, not back at two.
+    const walk = walkOf([1, 1, 1, 1], 2, 'blackSwan', { rowMoves: steady(4) })
+    expect(walk).toEqual([2, 2.5, 3, 3.5, 4])
   })
 
   it('ends where the landing says it did', async () => {
@@ -602,7 +654,7 @@ describe('tape percentages', () => {
 
   it('gives the same figure to anyone on the same price', async () => {
     const { formatTapePercent, totalTrendOf } = await import('./modes')
-    // The point of a common denominator: after hours these two carried in
+    // The point of a common denominator: on a later day these two carried in
     // different prices, but a tie on the close is a tie on the percentage.
     expect(formatTapePercent(103)).toBe(formatTapePercent(103))
     expect(totalTrendOf(103)).toBe('up')

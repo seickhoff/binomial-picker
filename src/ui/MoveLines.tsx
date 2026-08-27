@@ -107,8 +107,8 @@ export function MoveLines({ entries, sessions, mode, openPrice, labels }: MoveLi
             )
           })}
 
-          {/* Each line labelled where it ends — so a line is identified by more
-              than its colour. */}
+          {/* Each line labeled where it ends — so a line is identified by more
+              than its color. */}
           {walks.map(({ entry, values }) => {
             const endY = y(values[values.length - 1])
             const dimmed = picked !== null && picked !== entry.player.id

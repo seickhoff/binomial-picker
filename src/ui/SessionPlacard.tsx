@@ -1,4 +1,5 @@
 import { tradingDayAfter } from '../game/calendar'
+import { sessionNumber } from '../game/series'
 import { useGame } from '../game/store'
 import { sessionPlacard } from './presenters'
 
@@ -18,7 +19,7 @@ export function SessionPlacard() {
   const release = useGame((s) => s.release)
 
   // Session one is day one; each tie-break that follows is the next trading day.
-  const day = round.index + 1
+  const day = sessionNumber(round)
   const { kicker, title, date } = sessionPlacard(
     day,
     tradingDayAfter(new Date(seriesStart), round.index),

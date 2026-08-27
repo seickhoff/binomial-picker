@@ -15,8 +15,8 @@ describe('reading a peg index back', () => {
 })
 
 describe('the note a peg rings', () => {
-  it('puts the middle of an even row at the centre pitch, panned centre', () => {
-    // Row 2 has three pegs, so the middle one is dead centre.
+  it('puts the middle of an even row at the center pitch, panned center', () => {
+    // Row 2 has three pegs, so the middle one is dead center.
     const middle = voiceForPeg(pegIndex(2, 1))
     expect(middle.pan).toBe(0)
     expect(middle.frequency).toBeCloseTo(CENTRE_PITCH, 5)
@@ -55,7 +55,7 @@ describe('the note a peg rings', () => {
     const geo = boardGeometry(MAX_ROWS)
     const pitches = geo.pegs.map((_, index) => voiceForPeg(index).frequency)
 
-    // An octave either side of centre, clamped, so a 24-row board doesn't run off
+    // An octave either side of center, clamped, so a 24-row board doesn't run off
     // the edges of hearing where its rows are widest.
     expect(Math.min(...pitches)).toBeCloseTo(CENTRE_PITCH / 2, 5)
     expect(Math.max(...pitches)).toBeCloseTo(CENTRE_PITCH * 2, 5)

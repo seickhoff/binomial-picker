@@ -1,5 +1,5 @@
 /**
- * The floor, synthesised.
+ * The floor, synthesized.
  *
  * No audio file. A trading floor is a room full of overlapping voices, and a
  * room full of voices is what noise sounds like once it is band-passed around
@@ -9,7 +9,7 @@
  * of a background and then cannot stop hearing.
  *
  * Generating it costs a few hundred lines of arithmetic once. A recording would
- * cost a licence, a megabyte over the wire, and a fetch that can fail — for a
+ * cost a license, a megabyte over the wire, and a fetch that can fail — for a
  * sound this app renders the same way it renders its backdrop.
  *
  * The whole floor hangs off one gain of its own, so opening and closing it is a

@@ -43,6 +43,13 @@ export type SettleRule =
   | 'winner'
   /** Keep going until first and last are both decided; middles may tie. */
   | 'winnerAndLoser'
+  /**
+   * One drop and done: whatever the board says is the result, ties included.
+   *
+   * Not a settling rule so much as the absence of one — there is no second
+   * session to reach, so a level top is simply how that round ended.
+   */
+  | 'oneShot'
 
 export interface Player {
   readonly id: string
@@ -63,7 +70,7 @@ export interface Landing {
   readonly flips: readonly number[]
   /** Probability of landing in that bin under Binomial(rows, 1/2). */
   readonly probability: number
-  /** Bins away from the expected centre. */
+  /** Bins away from the expected center. */
   readonly deviation: number
   /** Finish order, 0-based. */
   readonly order: number
@@ -98,10 +105,11 @@ export interface Round {
   /**
    * Price each entrant opened this round at, for Stock Market mode.
    *
-   * In Stock Market mode these are always equal within a round: the first round
-   * opens everyone at $100, and a tie-break there only includes players level on
-   * price. (In Black Swan mode a tie-break groups players by how improbable
-   * their landing was, so prices can differ — they just aren't used.)
+   * Equal across the field on day one, where everyone opens at $100, and only
+   * then: a further trading day puts the whole field back on the board carrying
+   * the price it reached, so the opens are as spread out as the last close was.
+   * That is also the order the field is released in — see `lineup.ts`.
+   * (Black Swan keeps prices too; it simply never reads them.)
    */
   readonly openPrices: Readonly<Record<string, number>>
 }

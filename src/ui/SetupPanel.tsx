@@ -245,19 +245,36 @@ export function SetupPanel() {
             className={settleRule === 'winnerAndLoser' ? 'is-active' : ''}
             onClick={() => setSettleRule('winnerAndLoser')}
           >
-            Winner &amp; loser
+            {/* "Both ends" rather than "Winner & loser": three labels have to
+                share a 320px panel, and the longer one wrapped to two lines
+                while its neighbors stayed on one. The hint below says which
+                two ends they are. */}
+            Both ends
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={settleRule === 'oneShot'}
+            className={settleRule === 'oneShot' ? 'is-active' : ''}
+            onClick={() => setSettleRule('oneShot')}
+          >
+            One shot
           </button>
         </div>
         <p className="hint">{settleRuleHint(settleRule)}</p>
+        {/* Nothing for it to run: one shot never reaches a second session, so the
+            switch is shown disabled rather than hidden — it is a setting people
+            look for, and a missing one reads as a bug. */}
         <label className="toggle">
           <input
             type="checkbox"
-            checked={autoSessions}
+            checked={autoSessions && settleRule !== 'oneShot'}
+            disabled={settleRule === 'oneShot'}
             onChange={(e) => setAutoSessions(e.target.checked)}
           />
           {autoSessionsLabel(mode)}
         </label>
-        <p className="hint">{autoSessionsHint(mode, autoSessions)}</p>
+        <p className="hint">{autoSessionsHint(mode, autoSessions, settleRule)}</p>
       </section>
 
       <section className="panel-section">

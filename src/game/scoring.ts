@@ -45,7 +45,7 @@ export function openPriceOf(playerId: string, round: Round): number {
  * The price every entrant opened at, or null when they differ.
  *
  * The first round of a series opens everyone at $100, so a single price axis
- * describes every slot. An after-hours session carries each stock's own price
+ * describes every slot. A later trading day carries each stock's own price
  * forward, so there is no shared axis and callers must fall back to showing the
  * move instead.
  */
@@ -113,7 +113,9 @@ export interface Settlement {
  * Who is top, who is bottom, and whether that is enough to stop.
  *
  * Places in the middle may always tie; only the ends the rule names have to
- * come apart.
+ * come apart — and one shot names neither, so a completed round is the result
+ * whatever it says. Both ends are still reported either way: which end is level
+ * is worth showing even when nothing will be done about it.
  */
 export function settlementOf(round: Round, mode: Mode, rule: SettleRule): Settlement {
   const { landings } = round
@@ -127,7 +129,8 @@ export function settlementOf(round: Round, mode: Mode, rule: SettleRule): Settle
   const winners = landings.filter((_, i) => scores[i] === best)
   const losers = landings.filter((_, i) => scores[i] === worst)
 
-  const topLevel = winners.length > 1
+  // One shot asks nothing of either end: the round is the result, level or not.
+  const topLevel = rule !== 'oneShot' && winners.length > 1
   // A field of two that has separated has no bottom left to settle, and the
   // 'winner' rule never asks about the bottom at all.
   const bottomLevel = rule === 'winnerAndLoser' && losers.length > 1

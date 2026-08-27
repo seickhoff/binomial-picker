@@ -1,6 +1,6 @@
 /*
  * Dark-only UI. Surfaces and ink come from the validated reference palette
- * (panel surface #141826), which the player colours were checked against.
+ * (panel surface #141826), which the player colors were checked against.
  */
 :root {
   color-scheme: dark;
@@ -22,7 +22,7 @@
   --accent-strong: #5ba0f0;
   --accent-dim: #243352;
 
-  /* Reserved status colours: gain/loss only, never a player's identity. */
+  /* Reserved status colors: gain/loss only, never a player's identity. */
   --gain: #0ca30c;
   --loss: #d03b3b;
   --brass: #d2a53c;
@@ -34,7 +34,7 @@
   --font-tape:
     ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   /* Phosphor, not panel ink: these run on pure black, so they are pushed well
-     past the panel status pair. The sign in the text is still the non-colour
+     past the panel status pair. The sign in the text is still the non-color
      cue. */
   --gain-led: #4dff85;
   --loss-led: #ff6e6e;
@@ -73,11 +73,11 @@
 }
 
 /*
- * Gain/loss always ships with an arrow glyph from formatChange(), so the colour
+ * Gain/loss always ships with an arrow glyph from formatChange(), so the color
  * is never the only cue.
  *
  * These are attribute-only selectors, specificity (0,1,0) — which any
- * `.class element` rule outranks. Every container that sets its own text colour
+ * `.class element` rule outranks. Every container that sets its own text color
  * therefore exempts trend-bearing children with :not([data-trend]), rather than
  * this escalating to compete.
  */
@@ -162,7 +162,7 @@ body {
   gap: 12px;
   padding: 0 16px;
   border-right: 1px solid var(--hairline);
-  /* Baseline-aligned children need the box itself centred. */
+  /* Baseline-aligned children need the box itself centered. */
   align-self: center;
   padding-block: 3px;
 }
@@ -254,7 +254,7 @@ body {
  * as one class so the strip and the results header can't drift apart.
  *
  * No glow: bloom softens the glyph edges, and a board like this should read
- * sharp. The brightness comes from the colours against pure black.
+ * sharp. The brightness comes from the colors against pure black.
  */
 .tape {
   font-family: var(--font-tape);
@@ -302,7 +302,7 @@ body {
  *
  * It sits on the board, not on the text, so on the ticker the "pixels" stay put
  * while the text travels across them — which is how a real LED board behaves.
- * Kept light: any heavier and it reads as a grey veil over the glyphs rather
+ * Kept light: any heavier and it reads as a gray veil over the glyphs rather
  * than glass over the board.
  */
 .ticker::after,
@@ -447,11 +447,11 @@ body {
  * override the inline transform and freeze the card in place.
  */
 .panel-results {
-  /* Under the nav, centred across the board.
+  /* Under the nav, centered across the board.
    *
-   * Centred with auto margins against both offsets rather than the usual
+   * Centered with auto margins against both offsets rather than the usual
    * `left: 50%` and a translate, because `transform` belongs to the drag handler:
-   * the moment it writes one, a transform-based centring would be cancelled and
+   * the moment it writes one, a transform-based centering would be canceled and
    * the card would jump half its width. */
   top: calc(var(--topnav-height) + 14px);
   left: 0;
@@ -769,7 +769,7 @@ input[type='range']:focus-visible {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  /* 2px surface ring, so adjacent colours never touch. */
+  /* 2px surface ring, so adjacent colors never touch. */
   box-shadow: 0 0 0 2px var(--surface-1);
 }
 
@@ -913,7 +913,7 @@ input[type='range']:focus-visible {
   }
   to {
     /* Barely a tenth larger: at button size that reads as a pulse, and it keeps
-       the ring inside its own margin instead of over the neighbouring button. */
+       the ring inside its own margin instead of over the neighboring button. */
     transform: scale(1.09);
     opacity: 0;
   }
@@ -1184,7 +1184,7 @@ input[type='range']:focus-visible {
  * it.
  *
  * Contrast is checked the usual way: #1a1815 ink on #ece7db newsprint is about
- * 14:1, and the two coloured kickers below are the darkened print inks, not the
+ * 14:1, and the two colored kickers below are the darkened print inks, not the
  * screen gain/loss pair, which would fail badly on a light ground.
  */
 .newspaper {
@@ -1196,7 +1196,7 @@ input[type='range']:focus-visible {
   border: 1px solid rgba(0, 0, 0, 0.4);
   color: #1a1815;
   font-family: 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-  /* Flat stock with a slight rag: a faint diagonal on top of the paper colour,
+  /* Flat stock with a slight rag: a faint diagonal on top of the paper color,
      which is enough to stop 14px of newsprint reading as a white box. */
   background-image:
     repeating-linear-gradient(
@@ -1350,7 +1350,7 @@ input[type='range']:focus-visible {
 }
 
 /* Print inks, dark enough to sit on paper. The kicker's own words already say
-   which end of the field this is, so the colour is never the only cue. */
+   which end of the field this is, so the color is never the only cue. */
 .newspaper-story[data-tone='good'] .newspaper-kicker {
   color: #1a5c2a;
 }
@@ -1456,7 +1456,7 @@ input[type='range']:focus-visible {
   fill: var(--surface-1);
 }
 
-/* Line-end labels on the move chart: the tape symbol, in the line's colour. */
+/* Line-end labels on the move chart: the tape symbol, in the line's color. */
 .chart-end-label {
   font-family: var(--font-tape);
   font-size: 10px;
@@ -1592,7 +1592,7 @@ input[type='range']:focus-visible {
  *
  * The type selector is load-bearing. As a bare class this was (0,1,0) against
  * `.move-line path` at (0,1,1), so the rule above won and the "wide" hit area
- * was in fact 2px wide — the same specificity trap that had the trend colours
+ * was in fact 2px wide — the same specificity trap that had the trend colors
  * and the winner's name earlier.
  */
 .move-line path.move-line-hit {
@@ -1605,7 +1605,7 @@ input[type='range']:focus-visible {
  *
  * Brighter than the grid it lies on, not the same weight. On a first session the
  * open is $100 — a round dollar, so a major gridline runs along exactly the same y,
- * and at the grid's own colour the dashes vanished underneath it.
+ * and at the grid's own color the dashes vanished underneath it.
  */
 .chart-open-line {
   stroke: var(--ink-muted);
@@ -1719,7 +1719,7 @@ input[type='range']:focus-visible {
 }
 
 /*
- * The accent itself — one bar, two colours.
+ * The accent itself — one bar, two colors.
  *
  * Positioned rather than the inset box-shadow this was, because a shadow can only
  * fill its cell edge to edge: it ran into the hairline above and below and read as
@@ -1755,13 +1755,13 @@ input[type='range']:focus-visible {
  * Green up, red down — the reserved status pair, used for the one thing it is
  * reserved for.
  *
- * These are the only marks in the app where a player's own colour is *not* the
+ * These are the only marks in the app where a player's own color is *not* the
  * fill, and that is deliberate: the palette holds a green, an emerald and a
- * coral, so identity colours on a candle body get read as gain and loss. On a
+ * coral, so identity colors on a candle body get read as gain and loss. On a
  * candlestick that reading is not a mistake, so the chart follows it and puts
  * identity in the label instead.
  *
- * Direction is never colour alone: the body sits above or below the opening line,
+ * Direction is never color alone: the body sits above or below the opening line,
  * and the hovered tooltip spells out all four figures.
  */
 .candle-wick,
@@ -1795,11 +1795,11 @@ input[type='range']:focus-visible {
 /*
  * Plain white, unlike every other chart label in the app.
  *
- * The candles carry the only two colours this chart is trying to say anything
+ * The candles carry the only two colors this chart is trying to say anything
  * with. Labelling them in the player palette as well put a third scheme
  * underneath — greens and reds among them — with nothing to tell the eye which
  * of the three to read. The symbol is doing the identifying, and it does not
- * need a colour to do it.
+ * need a color to do it.
  */
 .candle-label {
   fill: var(--ink-primary);
@@ -1961,7 +1961,7 @@ input[type='range']:focus-visible {
 }
 
 /* Gain/loss tint on the ladder. The number itself states the value, so the
-   colour is decoration rather than the only cue. */
+   color is decoration rather than the only cue. */
 .slot-label[data-trend='up'] {
   color: #6ede6e;
 }
@@ -1999,7 +1999,7 @@ input[type='range']:focus-visible {
     width: 208px;
   }
 
-  /* Full width here: there is no room to centre a table in. */
+  /* Full width here: there is no room to center a table in. */
   .panel-results {
     left: 12px;
     right: 12px;

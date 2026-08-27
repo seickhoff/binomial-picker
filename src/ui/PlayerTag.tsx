@@ -2,11 +2,11 @@ import { colorForSlot } from '../game/palette'
 import type { Player } from '../game/types'
 
 /**
- * A player's colour, on its own.
+ * A player's color, on its own.
  *
  * This used to carry a slot number as a second identity channel, from when the
  * palette repeated after eight players. The palette now holds twenty distinct,
- * colour-vision-checked colours, so the number was an arbitrary index that meant
+ * color-vision-checked colors, so the number was an arbitrary index that meant
  * nothing to anyone reading it. Where a mark genuinely needs a text label, the
  * ticker symbol is the one that means something.
  */

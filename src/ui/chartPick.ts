@@ -11,9 +11,9 @@ import { useState } from 'react'
  * So hover belongs to the mouse alone, and a tap gets a pick of its own that
  * outlives the touch: tapping a mark opens it, tapping the same mark again closes
  * it, and tapping another switches across. Nothing here reads `:hover`, and
- * nothing depends on a `click` being synthesised from a tap — `pointerup` is the
+ * nothing depends on a `click` being synthesized from a tap — `pointerup` is the
  * event, which WebKit sends where the touch began however far the finger drifted,
- * and withholds in favour of `pointercancel` when the gesture turns into a scroll.
+ * and withholds in favor of `pointercancel` when the gesture turns into a scroll.
  */
 type PointerLike = { readonly pointerType: string }
 
@@ -63,7 +63,7 @@ export function useChartPick<K>(): {
 
 /**
  * Where a popup of `width` sits inside a box `room` wide when it would rather be
- * centred on `anchor`. Both ends clamp, so a popup on the first bar or the last
+ * centered on `anchor`. Both ends clamp, so a popup on the first bar or the last
  * is complete instead of half cut off by the edge of the card.
  *
  * A popup with no room to fit gives up and starts at the left edge: hanging off

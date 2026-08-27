@@ -90,8 +90,8 @@ function targetFraming(
   const y = Math.max(focus.leadY * 0.62 + focus.meanY * 0.38, shot.endY)
   // Widen as the marbles approach the bins, and be done by `widenBy` of the way.
   const span = (shot.entryY - shot.endY) * widenBy
-  const travelled = clamp((shot.entryY - y) / (span || 1), 0, 1)
-  return { y, height: lerp(shot.closeHeight, shot.wideHeight, travelled * travelled) }
+  const traveled = clamp((shot.entryY - y) / (span || 1), 0, 1)
+  return { y, height: lerp(shot.closeHeight, shot.wideHeight, traveled * traveled) }
 }
 
 /** Places the camera so `height` world units span the viewport, looking down. */

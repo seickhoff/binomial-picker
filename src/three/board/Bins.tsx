@@ -3,7 +3,7 @@ import { Html } from '@react-three/drei'
 import { Color } from 'three'
 import { binomialPmf } from '../../game/binomial'
 import { BOARD_DEPTH, FLOOR_THICKNESS, type BoardGeometry } from '../../game/geometry'
-import { slotLabel, slotOffset, trendOf } from '../../game/modes'
+import { ladderLabel, slotOffset, trendOf } from '../../game/modes'
 import { colorForSlot } from '../../game/palette'
 import type { Landing, Mode, Player } from '../../game/types'
 import {
@@ -14,15 +14,25 @@ import {
   PROFILE_WINNER_COLOR,
 } from './materials'
 
-/** Above this many slots the labels shrink so a single row still fits. */
-const CROWDED_ABOVE = 11
+/**
+ * How big a slot label is, in pixels, at each width of board.
+ *
+ * Every slot keeps its label, so with a lot of slots the type shrinks rather
+ * than the row splitting in two. Black Swan's are odds — "1 in 699k" against
+ * Stock Market's "$103" — so they are half again as wide and run out of room
+ * several slots sooner. Largest board first; the first one that fits wins.
+ */
+function labelSize(binCount: number, mode: Mode): number {
+  if (mode === 'stock') return binCount > 11 ? 10 : 12
+  if (binCount > 17) return 8
+  return binCount > 9 ? 9 : 11
+}
 
 /**
- * The ladder across the front of the floor: what each slot pays. Prices in
- * Stock Market mode, bin numbers in Black Swan.
+ * The ladder across the front of the floor: what each slot is worth. Prices in
+ * Stock Market mode, odds in Black Swan — each mode's own currency.
  *
- * One row, sitting on the plinth. Every slot keeps its label, so with a lot of
- * slots the type shrinks rather than the row splitting in two.
+ * One row, sitting on the plinth.
  */
 export function SlotLabels({
   geo,
@@ -36,19 +46,28 @@ export function SlotLabels({
   openPrice: number | null
   winnerBins: readonly number[]
 }) {
-  const fontSize = geo.binCount > CROWDED_ABOVE ? 10 : 12
+  const fontSize = labelSize(geo.binCount, mode)
+  // The odds Black Swan's ladder is labeled with. Built once for the board,
+  // not once per slot: Pascal's triangle is quadratic in the row count.
+  const pmf = useMemo(() => binomialPmf(geo.rows), [geo.rows])
 
   return (
     <group>
       {geo.binCenters.map((x, bin) => {
         // Direction still reads off the position, whatever a row is worth.
         const move = slotOffset(bin, geo.rows)
-        const label = slotLabel({ mode, bin, rows: geo.rows, openPrice })
+        const label = ladderLabel({
+          mode,
+          bin,
+          rows: geo.rows,
+          openPrice,
+          chance: pmf[bin] ?? 0,
+        })
         return (
           <Html
             key={bin}
             center
-            // Centred on the plinth's front face, just clear of it.
+            // Centered on the plinth's front face, just clear of it.
             position={[x, geo.floorY - FLOOR_THICKNESS / 2, BOARD_DEPTH * 0.72]}
             distanceFactor={geo.height * 0.62}
             // Below every panel's stacking order; see .panel in styles.css.
@@ -61,7 +80,7 @@ export function SlotLabels({
               data-trend={mode === 'stock' ? trendOf(move) : undefined}
               data-winner={winnerBins.includes(bin) ? '' : undefined}
             >
-              {mode === 'stock' ? label : bin}
+              {label}
             </span>
           </Html>
         )
@@ -120,7 +139,7 @@ function profileColor(bin: number, rows: number, mode: Mode, isWinner: boolean):
   return isWinner ? color : color.multiplyScalar(0.42)
 }
 
-/** A bin lights up in the colour of whoever landed in it. */
+/** A bin lights up in the color of whoever landed in it. */
 export function BinLights({
   geo,
   landings,
@@ -171,7 +190,7 @@ function landedColorByBin(
   for (const landing of landings) {
     const slot = slotById.get(landing.playerId)
     if (slot === undefined) continue
-    // A winner's colour outranks an also-ran sharing the bin.
+    // A winner's color outranks an also-ran sharing the bin.
     if (!colors.has(landing.bin) || winnerBins.includes(landing.bin)) {
       colors.set(landing.bin, colorForSlot(slot).hex)
     }

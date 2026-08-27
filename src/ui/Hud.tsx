@@ -1,7 +1,9 @@
 import { formatOdds } from '../game/binomial'
 import { MODES, formatChange, formatPrice, trendOf } from '../game/modes'
 import { openPriceOf, rankRound } from '../game/scoring'
+import { sessionNumber } from '../game/series'
 import { useGame } from '../game/store'
+import { useScoredRound } from '../result'
 import type { Player } from '../game/types'
 import { PlayerDot } from './PlayerTag'
 
@@ -14,15 +16,19 @@ export function Hud() {
   const muted = useGame((s) => s.muted)
   const setMuted = useGame((s) => s.setMuted)
   const backToSetup = useGame((s) => s.backToSetup)
+  const scored = useScoredRound()
 
-  const ranked = rankRound(round, players, mode)
+  // Standings are the standings of the series, so a Black Swan player who has
+  // landed today is placed on their whole run of sessions rather than on today's
+  // bin alone. Anyone still falling drops through to `pending` below.
+  const ranked = rankRound(scored, players, mode)
   const landedIds = new Set(round.landings.map((l) => l.playerId))
   const pending = round.entrantIds
     .map((id) => players.find((p) => p.id === id))
     .filter((p): p is Player => p !== undefined && !landedIds.has(p.id))
 
   const heading = round.tieBreak
-    ? `${MODES[mode].tieBreakName} · round ${round.index + 1}`
+    ? `${MODES[mode].tieBreakName} · round ${sessionNumber(round)}`
     : 'Standings'
 
   return (

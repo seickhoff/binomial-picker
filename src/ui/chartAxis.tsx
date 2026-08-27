@@ -50,7 +50,7 @@ export function valueAxis(values: readonly number[], top: number): ValueAxis {
   }
 }
 
-/** How a value reads in each mode: a price, or slots from the centre. */
+/** How a value reads in each mode: a price, or slots from the center. */
 export function valueFormat(mode: Mode): (value: number) => string {
   return mode === 'stock' ? formatPrice : formatSlots
 }
@@ -102,7 +102,7 @@ export interface GridLine {
  * Both modes are guaranteed at least one major line, so the axis is never
  * unlabelled. In stock mode the majors are whole dollars and the axis always spans
  * at least a dollar, and any interval that wide contains a whole one. In slots mode
- * every walk starts from the centre, so zero is always on the axis — and zero is a
+ * every walk starts from the center, so zero is always on the axis — and zero is a
  * multiple of everything.
  */
 export function gridLines(axis: ValueAxis, mode: Mode): GridLine[] {
@@ -126,10 +126,10 @@ function rungFor(mode: Mode, span: number): readonly [number, number] {
 }
 
 /**
- * The horizontal grid: a faint line every minor rung, a stronger, labelled one on
+ * The horizontal grid: a faint line every minor rung, a stronger, labeled one on
  * every round value.
  *
- * Only the majors are labelled. The minors are there to be measured against, not
+ * Only the majors are labeled. The minors are there to be measured against, not
  * read, and a number on each of twenty of them is a wall of digits.
  */
 export function AxisGrid({
@@ -174,7 +174,7 @@ export function AxisGrid({
 /**
  * Where everyone began: the line that says who finished up and who finished down.
  *
- * Drawn only when the field shares an opening price. After hours each stock
+ * Drawn only when the field shares an opening price. On a later day each stock
  * carries its own price in, and a single line would be claiming otherwise.
  */
 export function OpeningLine({
@@ -191,7 +191,7 @@ export function OpeningLine({
   right: number
 }) {
   if (openPrice === null) return null
-  // Black Swan measures slots from the centre, so its own opening line is zero.
+  // Black Swan measures slots from the center, so its own opening line is zero.
   const value = mode === 'stock' ? openPrice : 0
 
   return (

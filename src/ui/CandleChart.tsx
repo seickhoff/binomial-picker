@@ -23,12 +23,12 @@ import { useChartPick } from './chartPick'
  * either mode. That is the point of having it.
  *
  * Green up and red down, which is the one thing about a candlestick everybody
- * already knows. It is also the only thing colour can say here: the player
- * palette contains a green, an emerald and a coral, so identity colours on the
+ * already knows. It is also the only thing color can say here: the player
+ * palette contains a green, an emerald and a coral, so identity colors on the
  * bodies were being read as gain and loss by anyone who has seen a price chart —
  * correctly, because that is what green and red mean on a candle. Identity moved
  * to the label under each candle: the symbol itself, in plain white, so the only
- * colours in the chart are the two that mean something.
+ * colors in the chart are the two that mean something.
  */
 export interface CandleChartProps {
   /** Ranked best first; the order the candles are drawn in. */
@@ -46,7 +46,7 @@ const PAD = { top: 14, right: 12, bottom: 30, left: 44 }
 const MAX_BODY_WIDTH = 26
 /** Narrowest it may be drawn before it stops reading as a body at all. */
 const MIN_BODY_WIDTH = 3
-/** Share of its lane a body fills, leaving the rest as a gap to its neighbour. */
+/** Share of its lane a body fills, leaving the rest as a gap to its neighbor. */
 const BODY_SHARE = 0.58
 /** Below this much room per candle, the labels are turned to fit. */
 const TURN_LABELS_BELOW = 30
@@ -72,7 +72,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
   // Every candle gets an equal share of the width, so twenty fit where four do.
   const lane = (CHART_WIDTH - PAD.left - PAD.right) / drawn.length
   const bodyWidth = Math.max(MIN_BODY_WIDTH, Math.min(MAX_BODY_WIDTH, lane * BODY_SHARE))
-  const centreOf = (index: number) => PAD.left + lane * (index + 0.5)
+  const centerOf = (index: number) => PAD.left + lane * (index + 0.5)
   const height = PAD.top + PLOT_HEIGHT + PAD.bottom
   const labelY = PAD.top + PLOT_HEIGHT + LABEL_DROP
   const turned = lane < TURN_LABELS_BELOW
@@ -98,7 +98,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
           />
 
           {drawn.map(({ entry, candle }, index) => {
-            const centre = centreOf(index)
+            const center = centerOf(index)
             const bodyLow = Math.min(candle.open, candle.close)
             const bodyHigh = Math.max(candle.open, candle.close)
             // Against its own open, which is only "against $100" on day one: after
@@ -114,8 +114,8 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
               >
                 {/* The wick: the whole range the price ever covered. */}
                 <line
-                  x1={centre}
-                  x2={centre}
+                  x1={center}
+                  x2={center}
                   y1={y(candle.high)}
                   y2={y(candle.low)}
                   className="candle-wick"
@@ -123,7 +123,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
                 />
                 {/* Open to close. */}
                 <rect
-                  x={centre - bodyWidth / 2}
+                  x={center - bodyWidth / 2}
                   y={y(bodyHigh)}
                   width={bodyWidth}
                   height={Math.max(1, y(bodyLow) - y(bodyHigh))}
@@ -133,7 +133,7 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
                 {/* A target the full lane wide, so a thin candle is still easy
                     to point at. */}
                 <rect
-                  x={centre - lane / 2}
+                  x={center - lane / 2}
                   y={PAD.top}
                   width={lane}
                   height={PLOT_HEIGHT}
@@ -143,20 +143,20 @@ export function CandleChart({ entries, candles, mode, openPrice, labels }: Candl
             )
           })}
 
-          {/* Identity lives here, as the symbol. White, not the player's colour:
-              the candles are already green and red, and a third colour scheme
+          {/* Identity lives here, as the symbol. White, not the player's color:
+              the candles are already green and red, and a third color scheme
               underneath them is one the eye has to be told how to read. */}
           {drawn.map(({ entry }, index) => {
-            const centre = centreOf(index)
+            const center = centerOf(index)
             const dimmed = picked !== null && picked !== entry.player.id
             return (
               <text
                 key={entry.player.id}
-                x={centre}
+                x={center}
                 y={labelY}
                 className={entry.isWinner ? 'candle-label is-winner' : 'candle-label'}
                 textAnchor={turned ? 'end' : 'middle'}
-                transform={turned ? `rotate(-45 ${centre} ${labelY})` : undefined}
+                transform={turned ? `rotate(-45 ${center} ${labelY})` : undefined}
                 opacity={dimmed ? 0.25 : 1}
               >
                 {labels.get(entry.player.id)}

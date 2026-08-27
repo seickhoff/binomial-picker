@@ -22,7 +22,7 @@ import { audioDevice } from './context'
 const PENTATONIC = [0, 2, 4, 7, 9]
 /** The middle of the board rings here, in Hz. Exported so tests needn't guess. */
 export const CENTRE_PITCH = 1760
-/** Notes either side of centre. Eleven covers the widest board. */
+/** Notes either side of center. Eleven covers the widest board. */
 const HALF_RANGE = 5
 
 /**
@@ -36,7 +36,7 @@ const HALF_RANGE = 5
  * chink at the front and the short ring after it.
  *
  * The next mode up sits at 8.93, which at this pitch is 15.7kHz — above where it
- * would be heard, so it is left out rather than synthesised for nobody.
+ * would be heard, so it is left out rather than synthesized for nobody.
  */
 const MODES = [
   { ratio: 1, share: 1, decay: 1 },
@@ -70,7 +70,7 @@ export function rowOfPeg(index: number): number {
 /**
  * The note and the placement for a peg.
  *
- * `offset` is how far the peg sits from its row's centre, in peg spaces, so it is
+ * `offset` is how far the peg sits from its row's center, in peg spaces, so it is
  * negative on the left and positive on the right, and ±row/2 at the edges.
  */
 export function voiceForPeg(index: number): { frequency: number; pan: number } {

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { MAX_ROWS, MIN_ROWS } from './geometry'
+import { byName } from './lineup'
 import {
   BASE_PER_PEG,
   DEFAULT_VOLATILITY,
@@ -13,6 +14,7 @@ import {
 import { MAX_PLAYERS, MIN_PLAYERS } from './palette'
 import { drawRound } from './rounds'
 import { isRoundComplete, landingFor, priceAfter, settlementOf } from './scoring'
+import { scoredRound } from './series'
 import type { ChartView, DropMode, Mode, Phase, Player, Round, SettleRule } from './types'
 
 const DEFAULT_ROWS = 10
@@ -31,20 +33,6 @@ function makePlayer(slot: number): Player {
 /** Players taking part in the next round. */
 function activePlayers(players: readonly Player[]): Player[] {
   return players.filter((p) => p.active)
-}
-
-/**
- * Roster order: by name, as a person would file them.
- *
- * Collated rather than compared as strings, for two reasons. `numeric` puts
- * "Player 9" before "Player 10", where a plain comparison reads the "1" and files
- * it second. And `sensitivity: 'base'` ignores case and accents, so "de Vries"
- * lands next to "De Vries" instead of in a separate block after every capital.
- */
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
-
-export function byName(a: Player, b: Player): number {
-  return collator.compare(a.name, b.name) || a.slot - b.slot
 }
 
 function sortedByName(players: readonly Player[]): Player[] {
@@ -342,8 +330,9 @@ export const useGame = create<GameState>()(
 
       startTieBreak: () => {
         const { round, history, rows, runToken, mode, settleRule } = get()
-        // Nothing left to settle once the rule is satisfied.
-        if (settlementOf(round, mode, settleRule).settled) return
+        // Nothing left to settle once the rule is satisfied. Read off the series
+        // rather than the day: in Black Swan the day is only part of the result.
+        if (settlementOf(scoredRound(history, round, mode), mode, settleRule).settled) return
 
         // The whole field goes again: separating the top from the bottom is a
         // statement about everyone, not just whoever happens to be level.

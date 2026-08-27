@@ -1,24 +1,24 @@
 /**
- * Categorical player palette: one distinct colour per slot, never repeated.
+ * Categorical player palette: one distinct color per slot, never repeated.
  *
  * Generated as six hues across four lightness tiers in OKLCH, then ordered by
- * hill-climbing so the *worst* neighbouring pair is as far apart as possible —
- * slot order is the colour-vision safety mechanism, not decoration. Verified
+ * hill-climbing so the *worst* neighboring pair is as far apart as possible —
+ * slot order is the color-vision safety mechanism, not decoration. Verified
  * with the palette validator against this app's panel surface (#141826):
  *
  *   lightness band       all 20 inside L 0.48–0.67
- *   chroma floor         all 20 >= 0.1 (none read as grey)
+ *   chroma floor         all 20 >= 0.1 (none read as gray)
  *   CVD separation       worst adjacent ΔE 14.9 (deutan), 13.1 (tritan) — target 8
  *   normal-vision floor  worst adjacent ΔE 27.9 — target 15
  *   contrast vs surface  three slots sit just under 3:1
  *
- * Lightness is what carries the separation past eight colours: colour-blind
+ * Lightness is what carries the separation past eight colors: color-blind
  * vision collapses hue onto roughly one axis, so hue alone cannot separate
  * twenty. That is also why the tiers matter more than the hues here.
  *
  * The sub-3:1 contrast warning is relieved the way the palette documents it —
- * every player is direct-labelled with a number and name in the HUD, on the
- * marble, in the chart rug and in the results table, so nothing rests on colour.
+ * every player is direct-labeled with a number and name in the HUD, on the
+ * marble, in the chart rug and in the results table, so nothing rests on color.
  */
 export interface PlayerColor {
   /** Human-readable name — the non-visual identity channel. */
@@ -49,7 +49,7 @@ export const PLAYER_COLORS: readonly PlayerColor[] = [
   { label: 'Bronze', hex: '#896d13' },
 ]
 
-/** The roster can't outgrow the palette: every player gets their own colour. */
+/** The roster can't outgrow the palette: every player gets their own color. */
 export const MAX_PLAYERS = PLAYER_COLORS.length
 export const MIN_PLAYERS = 2
 

@@ -79,7 +79,7 @@ function fallTime(drop: number, vy0: number): number {
  * A bin is not bottomless. Twenty marbles is eight units of marble, and a bin is
  * about three deep — so on a shallow board with a full roster, a popular bin
  * genuinely runs out of room. Which bin is popular is not a rare case either:
- * four rows put a quarter of the field in the centre slot.
+ * four rows put a quarter of the field in the center slot.
  */
 export function binCapacity(geo: BoardGeometry): number {
   const ceiling = contactY(geo.rows - 1, geo) - MARBLE_RADIUS
@@ -146,7 +146,7 @@ export function buildDropPath(geo: BoardGeometry, options: BuildDropOptions): Dr
     t += duration
   }
 
-  // Down the funnel to the apex peg, drifting to centre as the walls gather it.
+  // Down the funnel to the apex peg, drifting to center as the walls gather it.
   push(
     {
       x0: releaseX,

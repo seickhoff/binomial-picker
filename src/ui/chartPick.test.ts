@@ -23,7 +23,7 @@ describe('tapping a mark', () => {
 
 describe('placing the popup', () => {
   // A 100px popup in a 560px plot: the desk case, where there is room to spare.
-  it('centres on the mark when it fits', () => {
+  it('centers on the mark when it fits', () => {
     expect(popupLeft(280, 100, 560)).toBe(230)
   })
 

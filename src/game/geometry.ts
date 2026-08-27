@@ -1,6 +1,6 @@
 /**
  * Board geometry, in world units. One unit = the horizontal gap between two
- * neighbouring pegs in the same row.
+ * neighboring pegs in the same row.
  *
  * Layout, top to bottom:
  *   funnel — the upside-down triangle marbles are poured into, converging on
@@ -59,7 +59,7 @@ export interface BoardGeometry {
   readonly rows: number
   readonly pegs: readonly Peg[]
   readonly binCount: number
-  /** World x of each bin's centre, index 0…rows. */
+  /** World x of each bin's center, index 0…rows. */
   readonly binCenters: readonly number[]
   /** World x of each interior bin divider. */
   readonly dividerX: readonly number[]
@@ -99,7 +99,7 @@ export function boardGeometry(rows: number): BoardGeometry {
 
   const lastRowY = apexY - (rows - 1) * ROW_GAP
   const bins = rows + 1
-  // Bin k sits under the gap the marble falls through, so bin centres continue
+  // Bin k sits under the gap the marble falls through, so bin centers continue
   // the peg lattice half a step out from the widest row.
   const binCenters = Array.from({ length: bins }, (_, k) => (k - rows / 2) * SPACING)
   const dividerX = Array.from({ length: bins - 1 }, (_, m) => binCenters[m] + SPACING / 2)

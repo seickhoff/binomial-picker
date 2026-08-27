@@ -94,7 +94,7 @@ describe.each(VIEWPORTS)('framing at $width×$height', ({ width, height }) => {
       const gap = geo.floorY - bottom
       expect(gap, `${rows} rows`).toBeGreaterThan(0)
       // A margin, not a chasm — but only while the shot is anchored at all. A
-      // frame roomier than the device has surplus by definition, and centres it.
+      // frame roomier than the device has surplus by definition, and centers it.
       if (shot.wideHeight < geo.height) {
         expect(gap, `${rows} rows`).toBeLessThan(shot.wideHeight * 0.25)
       }
@@ -109,7 +109,7 @@ describe.each(VIEWPORTS)('framing at $width×$height', ({ width, height }) => {
    * it: the board sat in the lower half with its bins jammed into the bottom edge
    * and a void over the funnel.
    */
-  it('centres the finished shot when the frame is roomier than the device', () => {
+  it('centers the finished shot when the frame is roomier than the device', () => {
     for (const { rows, geo, shot } of shots) {
       if (shot.wideHeight < geo.height) continue
       expect(shot.endY, `${rows} rows`).toBeCloseTo(geo.centerY)
@@ -137,7 +137,7 @@ describe('a landscape window', () => {
     { width: 844, height: 390 },
   ]
 
-  it.each(LANDSCAPE)('centres only the boards that fit, at $width×$height', (viewport) => {
+  it.each(LANDSCAPE)('centers only the boards that fit, at $width×$height', (viewport) => {
     for (const rows of ALL_ROWS) {
       const geo = boardGeometry(rows)
       const shot = shotFor(geo, viewport.width / viewport.height, viewport.height)
@@ -145,7 +145,7 @@ describe('a landscape window', () => {
       /*
        * The bins alone set a floor of nine units on the closing frame, which is
        * taller than a four-row board — so the shallowest two boards fit inside
-       * their own closing shot on any window, and are centred in it. Everything
+       * their own closing shot on any window, and are centered in it. Everything
        * from six rows up is hung off the bottom edge, exactly as it always was.
        */
       expect(shot.wideHeight >= geo.height, `${rows} rows`).toBe(rows <= 5)

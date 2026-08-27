@@ -29,7 +29,7 @@ import type { Mode, Player, RankedEntry, SettleRule } from '../game/types'
  */
 export function chartTitle(mode: Mode, openPrice: number | null): string {
   if (mode !== 'stock') return 'Possible landings'
-  // After hours everyone opened somewhere different, so the axis is the move.
+  // Past day one everyone opened somewhere different, so the axis is the move.
   return openPrice === null ? 'Possible moves' : 'Possible closes'
 }
 
@@ -59,13 +59,33 @@ export function heroFigure(mode: Mode, top: RankedEntry): string {
 export function verdictDetail(
   mode: Mode,
   lead: RankedEntry,
-  { tied }: { tied: boolean },
+  { tied, days = 1 }: { tied: boolean; days?: number },
 ): string | null {
   if (mode === 'stock') return null
 
   const { bin, deviation, probability } = lead.landing
-  const spread = `${deviation.toFixed(1)} off centre · ${formatPercent(probability)}`
+  /*
+   * The bin and the distance are today's; the odds above are the whole series'.
+   * Past day one that has to be said, or the line reads as one measurement —
+   * "bin 6 · 0.02%" invites working out how a bin six slots out is one chance in
+   * five thousand, and it isn't: the five thousand is four days of straying.
+   */
+  const offCenter = `${deviation.toFixed(1)} off center`
+  const spread =
+    days > 1
+      ? `${offCenter} today · ${formatPercent(probability)} over ${days} sessions`
+      : `${offCenter} · ${formatPercent(probability)}`
   return tied ? spread : `Bin ${bin} · ${spread}`
+}
+
+/**
+ * The result column's heading.
+ *
+ * Black Swan's odds multiply down a series, so past day one the column is no
+ * longer reporting the drop the rest of the row describes.
+ */
+export function resultColumnLabel(mode: Mode, days: number): string {
+  return mode === 'blackSwan' && days > 1 ? 'Series odds' : MODES[mode].resultLabel
 }
 
 /**
@@ -105,7 +125,7 @@ export function rowsSummary(
     } ${formatPrice(low)} and ${formatPrice(high)}`
   }
   const likeliest = Math.max(...pmf)
-  return `${rows + 1} bins · centre bin ${formatOdds(likeliest)} · edge bin ${formatOdds(pmf[0])}`
+  return `${rows + 1} bins · center bin ${formatOdds(likeliest)} · edge bin ${formatOdds(pmf[0])}`
 }
 
 /**
@@ -138,9 +158,11 @@ export function tieBreakLabel(mode: Mode): string {
 
 /** Describes a settle rule in the setup panel. */
 export function settleRuleHint(rule: SettleRule): string {
-  return rule === 'winner'
-    ? 'Re-drop until one player stands alone at the top.'
-    : 'Re-drop until first and last are both decided. Places in between may tie.'
+  if (rule === 'winner') return 'Re-drop until one player stands alone at the top.'
+  if (rule === 'winnerAndLoser') {
+    return 'Re-drop until first and last are both decided. Places in between may tie.'
+  }
+  return 'One drop, and the board is the result. A level top stays level.'
 }
 
 export function rematchLabel(mode: Mode): string {
@@ -395,7 +417,13 @@ export function autoSessionsLabel(mode: Mode): string {
   return mode === 'stock' ? 'Run the days automatically' : 'Re-drop automatically'
 }
 
-export function autoSessionsHint(mode: Mode, on: boolean): string {
+export function autoSessionsHint(mode: Mode, on: boolean, rule: SettleRule): string {
+  // One shot has no next session for this to run, whichever mode it is in.
+  if (rule === 'oneShot') {
+    return mode === 'stock'
+      ? 'One shot plays a single day, so there is nothing here to run.'
+      : 'One shot drops once, so there is nothing here to run.'
+  }
   if (mode === 'stock') {
     return on
       ? 'Each day opens on its own placard, and an unsettled close rolls into tomorrow by itself.'
@@ -425,7 +453,7 @@ export function axisLabelInterval(binCount: number, mode: Mode): number {
  * actually answers to.
  *
  * Either way it is a text label, which is the point: the lines are told apart by
- * colour, and colour is never allowed to be the only channel.
+ * color, and color is never allowed to be the only channel.
  */
 export function lineLabels(mode: Mode, players: readonly Player[]): Map<string, string> {
   if (mode === 'stock') return tickerSymbols(players)

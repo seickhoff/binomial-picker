@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-/** How much of the panel's centre must stay on screen. */
+/** How much of the panel's center must stay on screen. */
 const EDGE_MARGIN = 48
 
 /**

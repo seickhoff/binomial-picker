@@ -8,7 +8,7 @@ import { Color, type ShaderMaterial } from 'three'
  * so it never interferes with the board.
  *
  * The two operative chunks at the end put this shader through the renderer's
- * tone mapping and output colour space, which three applies to its own
+ * tone mapping and output color space, which three applies to its own
  * materials but not to a custom one. Only the operative chunks belong here —
  * their `_pars_` declarations are already prepended by WebGLProgram, and
  * including them again is a duplicate-definition compile error.
@@ -130,7 +130,7 @@ export function Backdrop({ width, height, z, focusY = 0.6, theme = 'blackSwan' }
     [focusY],
   )
 
-  // Recolour in place rather than rebuilding the material, which would drop the
+  // Recolor in place rather than rebuilding the material, which would drop the
   // shader program and recompile on every mode switch.
   useEffect(() => {
     const uniformSet = material.current?.uniforms

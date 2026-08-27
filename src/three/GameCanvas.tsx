@@ -5,6 +5,7 @@ import { ACESFilmicToneMapping } from 'three'
 import { boardGeometry } from '../game/geometry'
 import { commonOpenPrice, winnersOf } from '../game/scoring'
 import { useGame } from '../game/store'
+import { useScoredRound } from '../result'
 import { Board } from './Board'
 import { CameraRig } from './CameraRig'
 import { Marbles } from './Marbles'
@@ -32,9 +33,18 @@ export function GameCanvas() {
   // drives the preview while setting up.
   const activeRows = phase === 'setup' ? rows : round.rows
   const geo = useMemo(() => boardGeometry(activeRows), [activeRows])
+  /*
+   * Which slots to light, once the drop is over.
+   *
+   * Who won is a question about the series — past day one a Black Swan winner is
+   * whoever's whole run of sessions is rarest, not whoever strayed furthest
+   * today. The slot is still today's: a scored round keeps the bin its marble
+   * actually landed in, and only its odds speak for the series.
+   */
+  const scored = useScoredRound()
   const winnerBins = useMemo(
-    () => (phase === 'results' ? winnersOf(round, mode).map((l) => l.bin) : []),
-    [phase, round, mode],
+    () => (phase === 'results' ? winnersOf(scored, mode).map((l) => l.bin) : []),
+    [phase, scored, mode],
   )
   // The overview is a camera move, so the loop has to be awake for it — on the
   // results screen it has usually idled by the time anyone holds space.

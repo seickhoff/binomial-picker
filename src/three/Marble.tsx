@@ -24,7 +24,7 @@ import { closeQuote, publishPrice } from '../live/priceFeed'
 import { flashPeg } from '../live/pegFlashes'
 
 /*
- * Every name tag sits centred on its own marble — on it, not above it.
+ * Every name tag sits centered on its own marble — on it, not above it.
  *
  * Lifting the tag clear of the marble looks tidier in isolation but reads wrong
  * as soon as marbles stack in a bin: each tag then floats over the marble above
@@ -147,7 +147,7 @@ export function Marble({
       painted.current = shownRow.current
       if (showPrice) label.current.textContent = `${tag} ${formatPrice(price)}`
       // Against the open, not the step count: a marble can be several steps right
-      // of centre and still down, having gone left on the wild row.
+      // of center and still down, having gone left on the wild row.
       label.current.dataset.trend = trendOf(price - openPrice)
     }
 

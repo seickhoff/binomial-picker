@@ -128,14 +128,14 @@ describe('roster size', () => {
     expect(new Set(players.map((p) => p.slot)).size).toBe(MAX_PLAYERS)
   })
 
-  it('gives every player a distinct colour, and a distinct number', async () => {
+  it('gives every player a distinct color, and a distinct number', async () => {
     const { useGame } = await loadGame()
     const { colorForSlot, MAX_PLAYERS } = await import('./palette')
     for (let i = 0; i < MAX_PLAYERS; i++) useGame.getState().addPlayer()
 
     const { players } = useGame.getState()
     expect(players).toHaveLength(MAX_PLAYERS)
-    // No repeats: a full roster never sees the same colour twice.
+    // No repeats: a full roster never sees the same color twice.
     expect(new Set(players.map((p) => colorForSlot(p.slot).hex)).size).toBe(MAX_PLAYERS)
     expect(new Set(players.map((p) => colorForSlot(p.slot).label)).size).toBe(MAX_PLAYERS)
     // Slot numbers are the identity channel, so they must never repeat either.

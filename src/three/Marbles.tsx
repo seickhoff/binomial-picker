@@ -15,8 +15,9 @@ import type { BoardGeometry } from '../game/geometry'
 import { marketFor, openPriceOf } from '../game/scoring'
 import { useGame } from '../game/store'
 import type { Market } from '../game/modes'
+import { releaseOrder } from '../game/lineup'
 import { tickerSymbols } from '../game/symbols'
-import type { DropMode, Player } from '../game/types'
+import type { DropMode, Mode, Player, Round } from '../game/types'
 import { clearMarbleFocus } from '../live/cameraFocus'
 import { clearQuotes, quoteOf, subscribeQuotes } from '../live/priceFeed'
 import { isCompact } from '../viewport'
@@ -46,16 +47,6 @@ function staggerFor(count: number, dropMode: DropMode): number {
   return Math.min(TOGETHER_GAP_MS, TOGETHER_BUDGET_MS / (count - 1))
 }
 
-/** Fisher-Yates, so every release order is equally likely. */
-function shuffled<T>(items: readonly T[]): T[] {
-  const out = [...items]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[out[i], out[j]] = [out[j], out[i]]
-  }
-  return out
-}
-
 /**
  * Turns the round's drawn flips into flight paths.
  *
@@ -67,17 +58,21 @@ function shuffled<T>(items: readonly T[]): T[] {
  */
 interface RoundPlan {
   readonly paths: Map<string, DropPath>
-  /** Entrants in the order they are released — shuffled every round. */
+  /** Entrants in the order they are released. */
   readonly order: readonly Player[]
 }
 
-function planRound(
-  entrants: readonly Player[],
-  geo: BoardGeometry,
-  plan: Readonly<Record<string, readonly number[]>>,
-): RoundPlan {
-  // Nobody goes first two rounds running, in either release mode.
-  const order = shuffled(entrants)
+interface RoundPlanRequest {
+  readonly entrants: readonly Player[]
+  readonly geo: BoardGeometry
+  readonly round: Round
+  readonly mode: Mode
+  readonly symbols: ReadonlyMap<string, string>
+}
+
+function planRound({ entrants, geo, round, mode, symbols }: RoundPlanRequest): RoundPlan {
+  // Whose turn it is to go first is a rule, and lives with the rules.
+  const order = releaseOrder({ entrants, round, mode, symbols })
   /*
    * Planned in release order, because that is the order the marbles arrive in:
    * every path takes the same time to fall, so the stagger between releases is
@@ -90,7 +85,7 @@ function planRound(
    */
   const paths = planDrops(
     geo,
-    order.map((player) => plan[player.id] ?? []),
+    order.map((player) => round.plan[player.id] ?? []),
   )
   return {
     paths: new Map(order.map((player, i) => [player.id, paths[i]])),
@@ -201,25 +196,34 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
    *
    * Held in a ref keyed by runToken, so a repeat render reuses the same plan —
    * re-planning mid-round would change outcomes already recorded. And built no
-   * earlier than the release, so the last round's marbles stay in their slots
-   * while the next session's placard is up: they give way to the new field when
-   * it is actually dropped, not a placard beforehand.
+   * earlier than the release, since a plan is a field on the board: the marbles
+   * appear when the drop begins, not while the placard is still up.
    */
   const plan = useRef<{ token: number; geo: BoardGeometry; round: RoundPlan } | null>(null)
   if (phase === 'running' && plan.current?.token !== runToken) {
-    plan.current = { token: runToken, geo, round: planRound(entrants, geo, round.plan) }
+    plan.current = {
+      token: runToken,
+      geo,
+      round: planRound({ entrants, geo, round, mode, symbols }),
+    }
   }
 
   /*
-   * Whatever was on the board, going back to setup takes it off for good.
+   * The board is cleared the moment a round is no longer being played on it:
+   * going back to setup, and a new session opening.
    *
-   * Without this the field came back: setup draws nothing, but it does not throw
-   * the plan away, so the next session's placard — which deliberately shows the
-   * last field still in its slots — found a plan waiting and drew a round that had
-   * been abandoned. Then the real drop began and swept it away, which reads as the
-   * game starting twice.
+   * The opening case is what takes the last field's colors out of the bins. A
+   * finished field used to sit in its slots under the next session's placard,
+   * which meant the new day opened showing yesterday's result — and since the bin
+   * lights and the winner marks go out with the old round, the marbles were the
+   * only thing left saying it, contradicting every other surface. They now go at
+   * the same moment, so a session opens on an empty board.
+   *
+   * Throwing the plan away is also what stops an abandoned field coming back:
+   * neither setup nor a placard draws anything, so a plan left in the ref would
+   * be found and rendered by the next phase that does.
    */
-  if (phase === 'setup') plan.current = null
+  if (phase === 'setup' || phase === 'opening') plan.current = null
 
   /*
    * How many of the planned marbles have been let go, and of which plan.
@@ -266,11 +270,10 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
    * Nothing to draw before the first drop — and nothing to draw for a field that
    * was planned against a different board.
    *
-   * The second half is the peg-count case. A finished field stays in its slots
-   * while the next session opens, which is right when the board underneath it is
-   * the same board. Change the row count in between and it is not: the marbles
-   * were given resting places on a ten-row board, and hold them in mid-air over a
-   * twenty-four-row one until the real drop clears them away.
+   * The second half is the peg-count case. A field rests in slots it was given on
+   * one board, so drawing it over a board of another depth holds those marbles in
+   * mid-air: resting places from a ten-row board, floating over a twenty-four-row
+   * one. Better an empty board than a wrong one.
    */
   if (!plan.current || plan.current.geo !== geo) return null
 
@@ -281,9 +284,12 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
   /*
    * Whether what is on the board is the field now being scored.
    *
-   * It is not, in one window: a session that opens while the last one's marbles
-   * are still sitting in their slots. They are on show, but their round is over,
-   * and nothing they do counts towards the round that has just been drawn.
+   * Always, now that a plan is thrown away the moment a session opens: a field on
+   * show is the field being played. Kept because the one window where it was
+   * false is the worst bug this file has had — the last round's marbles re-flew
+   * their paths under the placard and reported those landings into the round that
+   * had just been drawn, so the new session opened already scored with the old
+   * result, and a tie re-dropped to the same standings for ever.
    */
   const scoring = planToken === runToken
   const spread = entrants.length > 1 ? DEPTH_SPREAD : 0
@@ -296,17 +302,9 @@ export function Marbles({ geo }: { geo: BoardGeometry }) {
         if (!path || !market) return null
         return (
           <Marble
-            /*
-             * Keyed by the plan it is flying, not by the store's current run.
-             *
-             * These are the same number except in the window above — and there,
-             * keying by the run remounted every marble the moment the next session
-             * opened. A remounted marble starts its flight again from the funnel,
-             * so the previous field re-flew its paths under the placard, landed,
-             * and reported those landings into the round that had just been drawn.
-             * The new round therefore opened already scored, with the last round's
-             * result, and a tie re-dropped to the same standings for ever.
-             */
+            // Keyed by the plan it is flying, not by the store's current run, so
+            // a marble is remounted only when its own field is replaced. See the
+            // note on `scoring` for what remounting one costs.
             key={`${planToken}:${player.id}`}
             player={player}
             geo={geo}

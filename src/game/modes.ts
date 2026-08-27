@@ -5,6 +5,7 @@
  * per row. Only the scoring differs, which is the point: one rewards the
  * improbable, the other rewards direction.
  */
+import { formatOddsCompact } from './binomial'
 import type { Mode } from './types'
 
 /** Every stock opens here on the first round of a series. */
@@ -145,7 +146,7 @@ export const MODES: Record<Mode, ModeInfo> = {
   blackSwan: {
     id: 'blackSwan',
     name: 'Black Swan',
-    tagline: 'The least likely landing wins. Dead centre wins nothing.',
+    tagline: 'The least likely landing wins. Dead center wins nothing.',
     rule: 'Rarest bin wins',
     tieBreakName: 'Sudden death',
     tieBreakUnit: 'round',
@@ -156,7 +157,9 @@ export const MODES: Record<Mode, ModeInfo> = {
     name: 'Stock Market',
     tagline: `Every player opens at $${START_PRICE}. Highest close wins the session.`,
     rule: 'Highest close wins',
-    tieBreakName: 'After hours',
+    // Not "after hours": an unsettled close rolls into the next dated day of
+    // trading, which is a session of its own and is placarded as one.
+    tieBreakName: 'Extra day',
     tieBreakUnit: 'session',
     resultLabel: 'Close',
   },
@@ -165,7 +168,7 @@ export const MODES: Record<Mode, ModeInfo> = {
 export const MODE_ORDER: readonly Mode[] = ['blackSwan', 'stock']
 
 /**
- * Slots right of centre, which is position rather than money.
+ * Slots right of center, which is position rather than money.
  *
  * The one thing a landing still says on its own once rows are worth different
  * amounts: a bin is a position, and only a position.
@@ -190,26 +193,32 @@ function moveOf(market: Market, flip: number, row: number): number {
 }
 
 /**
- * The whole walk, one entry per row plus the opening value: prices in Stock
- * Market, and slots from the centre in Black Swan, which is the same series
+ * The whole walk, one entry per row plus the value it opened on: prices in Stock
+ * Market, and slots from the center in Black Swan, which is the same series
  * measured in the units that mode cares about.
+ *
+ * `opening` is in those units too — a price, or a position — and the walk starts
+ * from it rather than from nothing, which is how a Stock Market session carries
+ * on from the one before it. Black Swan is always handed dead center: its
+ * sessions are separate drops, and it is their odds that accumulate, not their
+ * position.
  */
 export function walkOf(
   flips: readonly number[],
-  openPrice: number,
+  opening: number,
   mode: Mode,
   market: Market,
 ): number[] {
-  const walk = [mode === 'stock' ? openPrice : 0]
-  let price = cents(openPrice)
+  const walk = [opening]
+  let price = cents(opening)
   let steps = 0
 
   flips.forEach((flip, row) => {
     price += moveOf(market, flip, row)
     steps += flip
-    // Black Swan has no prices: its walk is slots from the centre, half a slot
+    // Black Swan has no prices: its walk is slots from the center, half a slot
     // per peg, and no volatility applies to it.
-    walk.push(mode === 'stock' ? dollars(price) : steps / 2)
+    walk.push(mode === 'stock' ? dollars(price) : opening + steps / 2)
   })
   return walk
 }
@@ -225,35 +234,56 @@ export function priceRange(openPrice: number, rowMoves: readonly number[]): [num
   return [dollars(cents(openPrice) - reach), dollars(cents(openPrice) + reach)]
 }
 
+export interface SlotLabelRequest {
+  mode: Mode
+  bin: number
+  rows: number
+  openPrice: number | null
+}
+
 /**
- * What to write under a finishing slot.
+ * Which slot this is, for the axis of a chart drawn against a board.
  *
- * Lives here, beside the pricing, because both the ladder in the scene and the
- * distribution chart in the panels need exactly this decision, and those two
- * layers never import from one another.
+ * Lives here, beside the pricing, because the distribution chart is drawn in the
+ * panels and the ladder is drawn in the scene, and those two layers never import
+ * from one another.
  *
  * The slot's own worth, from the lattice: a dollar a slot, whatever the market is
  * doing. Volatility moves a marble's close by cents around this, so two marbles
  * in one bin can be a few cents apart — their own tags and the table carry that,
  * and the ladder stays the plain statement of what a position pays.
  */
-export function slotLabel({
-  mode,
-  bin,
-  rows,
-  openPrice,
-}: {
-  mode: Mode
-  bin: number
-  rows: number
-  openPrice: number | null
-}): string {
+export function slotLabel({ mode, bin, rows, openPrice }: SlotLabelRequest): string {
   if (mode !== 'stock') return String(bin)
 
   const move = dollars(slotOffset(bin, rows) * cents(DOLLARS_PER_SLOT))
   return openPrice === null
     ? formatMove(move)
     : formatPrice(dollars(cents(openPrice) + cents(move)))
+}
+
+/**
+ * What to write under a finishing slot on the board: what landing there is worth.
+ *
+ * A different question from `slotLabel`, and only in Stock Market do the two have
+ * the same answer — a price names the slot *and* says what it pays. Black Swan
+ * pays in improbability, so the ladder gives the odds of the slot instead of its
+ * number.
+ *
+ * The number said nothing. An index is a way of pointing, not a worth: "6" tells
+ * you where a marble is and nothing about whether landing there was any good,
+ * which on a board where the middle loses is the only question. The odds are the
+ * figure the mode actually ranks on, so the ladder now shows what the result is
+ * read from.
+ */
+export function ladderLabel({
+  chance,
+  ...slot
+}: SlotLabelRequest & {
+  /** The slot's own probability. Passed in, since the caller has the pmf. */
+  chance: number
+}): string {
+  return slot.mode === 'stock' ? slotLabel(slot) : formatOddsCompact(chance)
 }
 
 /**
@@ -280,13 +310,13 @@ export function formatTapePrice(price: number): string {
  * Percentage move for the tape, measured from where everyone began rather than
  * from this round's open.
  *
- * That makes it comparable: after hours, players carry different prices in, so a
+ * That makes it comparable: past day one, players carry different prices in, so a
  * per-round percentage puts one player's "+2%" off $104 next to another's off
  * $98 and invites reading them as equal. Against a common $100 the figure is a
  * pure function of the price, so it is the same for anyone on the same price —
  * which is also why a tie can always show it.
  *
- * The sign is the non-colour cue, so this always carries one.
+ * The sign is the non-color cue, so this always carries one.
  */
 export function formatTapePercent(price: number): string {
   const percent = ((price - START_PRICE) / START_PRICE) * 100
@@ -309,7 +339,7 @@ function formatMove(move: number): string {
 }
 
 /**
- * A value in slots from the centre, for Black Swan, which has no prices.
+ * A value in slots from the center, for Black Swan, which has no prices.
  *
  * Halves are real: a walk crosses half a slot per peg, so a marble sits between
  * slots for every odd row it has crossed.
@@ -326,7 +356,7 @@ export function formatChange(change: number): string {
   return `${arrow} ${sign}${Math.abs(change).toFixed(2)}`
 }
 
-/** Direction of a move, for status colouring. Never the only cue. */
+/** Direction of a move, for status coloring. Never the only cue. */
 export function trendOf(change: number): 'up' | 'down' | 'flat' {
   return change > 0 ? 'up' : change < 0 ? 'down' : 'flat'
 }

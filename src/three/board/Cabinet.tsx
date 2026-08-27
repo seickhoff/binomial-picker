@@ -54,7 +54,7 @@ function WallBar({ segment, side }: { segment: WallSegment; side: Side }) {
       castShadow
       receiveShadow
     >
-      {/* Overlong, so neighbouring segments meet without a seam to catch on. */}
+      {/* Overlong, so neighboring segments meet without a seam to catch on. */}
       <boxGeometry args={[length + WALL_THICKNESS, WALL_THICKNESS, BOARD_DEPTH]} />
       <meshStandardMaterial color={FRAME_COLOR} metalness={0.5} roughness={0.45} />
     </mesh>

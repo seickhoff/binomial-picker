@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { settlementOf } from '../game/scoring'
 import { useGame } from '../game/store'
+import { useScoredRound } from '../result'
 import type { Phase } from '../game/types'
 import { PLACARD_MS, SUMMARY_MS } from './sessionTiming'
 
@@ -31,10 +32,10 @@ export function useSessionFlow(): void {
   const runToken = useGame((s) => s.runToken)
   const mode = useGame((s) => s.mode)
   const settleRule = useGame((s) => s.settleRule)
-  const round = useGame((s) => s.round)
   const autoSessions = useGame((s) => s.autoSessions)
   const release = useGame((s) => s.release)
   const startTieBreak = useGame((s) => s.startTieBreak)
+  const scored = useScoredRound()
 
   useEffect(() => {
     if (phase !== 'opening') return
@@ -43,7 +44,8 @@ export function useSessionFlow(): void {
     // `runToken` restarts the wait for each session, not just the first.
   }, [phase, runToken, release])
 
-  const { settled } = settlementOf(round, mode, settleRule)
+  // The series, not the day: past day one a result belongs to all of it.
+  const { settled } = settlementOf(scored, mode, settleRule)
   const opening = wantsNextSession(phase, settled, autoSessions)
 
   useEffect(() => {

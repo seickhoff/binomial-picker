@@ -30,7 +30,7 @@ describe.each([4, 10, 16, 24])('drop model, %i rows', (rows) => {
     expect(path.netAfter).toHaveLength(rows + 1)
   })
 
-  it('always reaches the floor, on the bin centre', () => {
+  it('always reaches the floor, on the bin center', () => {
     for (const path of paths.slice(0, 5_000)) {
       const end = samplePath(path, path.duration)
       expect(end.x).toBeCloseTo(geo.binCenters[path.bin], 10)

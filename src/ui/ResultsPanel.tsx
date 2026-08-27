@@ -1,9 +1,10 @@
 import { useMemo, type CSSProperties } from 'react'
 import { formatOdds } from '../game/binomial'
-import { MODES, formatChange, formatPrice, trendOf } from '../game/modes'
+import { formatChange, formatPrice, trendOf } from '../game/modes'
 import { commonOpenPrice, rankRound, settlementOf } from '../game/scoring'
-import { seriesCandles, seriesOf, seriesTotals } from '../game/series'
+import { seriesCandles, seriesOf, seriesTotals, sessionNumber } from '../game/series'
 import { useGame } from '../game/store'
+import { useScoredRound } from '../result'
 import type { Mode, RankedEntry } from '../game/types'
 import { CandleChart } from './CandleChart'
 import { DistributionChart } from './DistributionChart'
@@ -23,6 +24,7 @@ import {
   resultsTableCaption,
   tieBreakLabel,
   topKicker,
+  resultColumnLabel,
   verdictDetail,
   type FrontPageEnd,
 } from './presenters'
@@ -63,8 +65,12 @@ export function ResultsPanel() {
   const rematch = useGame((s) => s.rematch)
   const backToSetup = useGame((s) => s.backToSetup)
 
-  const ranked = rankRound(round, players, mode)
-  const settlement = settlementOf(round, mode, settleRule)
+  // Past day one the result belongs to the series, in both modes — Stock Market
+  // because the price carried, Black Swan because the odds multiplied.
+  const scored = useScoredRound()
+  const days = sessionNumber(round)
+  const ranked = rankRound(scored, players, mode)
+  const settlement = settlementOf(scored, mode, settleRule)
   const { winners, settled } = settlement
   const symbols = tickerSymbols(players)
   const leaders = ranked.filter((entry) => entry.isWinner)
@@ -98,12 +104,14 @@ export function ResultsPanel() {
   const view = views.some((option) => option.id === chartView) ? chartView : 'distribution'
 
   /*
-   * The whole series, when there is one.
+   * The whole series, when there is one — and only Stock Market has one to draw.
    *
-   * Stock Market prices carry forward, so a series that took four days is one
-   * price history and one longer drop — forty flips at ten rows a day — and both
-   * charts read better over the whole thing than over the last day of it. Black
-   * Swan starts each round from the centre, so there is nothing to accumulate.
+   * Its prices carry forward, so four days is one price history and one longer
+   * drop, forty flips at ten rows a day, and both charts read better over the
+   * whole thing than over the last day of it. Black Swan's sessions are separate
+   * drops from the center: only their odds accumulate, and odds are not a line.
+   * Drawing them joined would claim a continuity the scoring deliberately does
+   * not have.
    */
   const sessions = useMemo(
     () => (mode === 'stock' ? seriesOf(history, round) : [round]),
@@ -113,7 +121,7 @@ export function ResultsPanel() {
   const acrossDays = sessions.length > 1
 
   // A series always opens at the same price for everyone, even though a single
-  // after-hours session does not.
+  // day past the first does not.
   const seriesOpenPrice = commonOpenPrice(sessions[0])
   const distribution = acrossDays
     ? {
@@ -167,6 +175,7 @@ export function ResultsPanel() {
             lead={top}
             mode={mode}
             symbols={symbols}
+            days={days}
           />
         )}
 
@@ -179,6 +188,7 @@ export function ResultsPanel() {
               lead={bottom}
               mode={mode}
               symbols={symbols}
+              days={days}
             />
           </>
         )}
@@ -272,12 +282,12 @@ export function ResultsPanel() {
                   Bin
                 </th>
                 <th scope="col" className="results-num">
-                  Off centre
+                  Off center
                 </th>
               </>
             )}
             <th scope="col" className="results-num">
-              {MODES[mode].resultLabel}
+              {resultColumnLabel(mode, days)}
             </th>
           </tr>
         </thead>
@@ -325,15 +335,17 @@ function VerdictBlock({
   lead,
   mode,
   symbols,
+  days,
 }: {
   kicker: string
   named: readonly RankedEntry[]
   lead: RankedEntry
   mode: Mode
   symbols: ReadonlyMap<string, string>
+  days: number
 }) {
   const tied = named.length > 1
-  const detail = verdictDetail(mode, lead, { tied })
+  const detail = verdictDetail(mode, lead, { tied, days })
 
   return (
     <div className="verdict-block">

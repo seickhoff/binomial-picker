@@ -8,7 +8,7 @@ import type { Landing, Mode, Player } from '../game/types'
 
 /**
  * Expected distribution as bars (one series — the title names it, so no legend
- * box), with the actual landings as a labelled rug beneath the axis. Bars and
+ * box), with the actual landings as a labeled rug beneath the axis. Bars and
  * badges never share a scale: the badges mark identity in a bin, not a value.
  */
 export interface DistributionChartProps {
@@ -19,8 +19,8 @@ export interface DistributionChartProps {
   mode: Mode
   /**
    * Stock Market mode: the price every entrant opened at, or null when they
-   * differ — after hours, each stock carries its own price forward, so slots are
-   * labelled by their move instead.
+   * differ — past day one, each stock carries its own price forward, so slots are
+   * labeled by their move instead.
    */
   openPrice: number | null
 }
@@ -179,14 +179,14 @@ export function DistributionChart({
           )}
 
           {/* The rug: who actually landed where. Number badge carries identity
-              alongside colour. */}
+              alongside color. */}
           {[...byBin.entries()].map(([bin, entries]) =>
             entries.map(({ player }, depth) => {
               const cx = columnCenter(bin)
               const cy = baselineY + PAD.bottom + depth * BADGE_ROW + BADGE + 2
               return (
                 <g key={`${bin}:${player.id}`} className="chart-badge">
-                  {/* 2px surface ring, so neighbouring colours never touch. */}
+                  {/* 2px surface ring, so neighboring colors never touch. */}
                   <circle cx={cx} cy={cy} r={BADGE + 1.5} className="chart-badge-ring" />
                   <circle cx={cx} cy={cy} r={BADGE} fill={colorForSlot(player.slot).hex} />
                 </g>

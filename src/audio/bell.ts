@@ -1,7 +1,7 @@
 /**
  * The bell that opens and closes the session.
  *
- * Synthesised, not sampled: there is no audio file in this repo, and a recording
+ * Synthesized, not sampled: there is no audio file in this repo, and a recording
  * of the real thing belongs to whoever recorded it. A bell is one of the few
  * sounds easier to build than to license, because what makes it a bell is
  * entirely in the numbers — its partials are *inharmonic*, sitting at ratios like
